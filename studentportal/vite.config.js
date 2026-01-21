@@ -6,5 +6,17 @@ import flowbiteReact from "flowbite-react/plugin/vite";
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    // This is the port your backend server is running on
+    
+    proxy:{
+      // This will proxy requests from /api in the backend server
+      // target is changed to match the backend server's URL
+      '/api': {
+        target: 'http://localhost:5000',
+        secure: false,
+      }
+    }
+  },
   plugins: [react(), tailwindcss(), flowbiteReact()],
 })

@@ -1,5 +1,5 @@
 import React from "react"
-import { BookOpenText,Users,School,ChartSpline} from "lucide-react"
+import { BookOpenText,Users,School,ChartSpline,ClipboardClock,TriangleAlert,ListCheck} from "lucide-react"
 import avatar from '../../assets/avatar.jpg'
 
 
@@ -7,7 +7,7 @@ import avatar from '../../assets/avatar.jpg'
 
 
 
-
+//dashboard summary data
 export const sumaryData = [
     {
         name: 'Number of Courses',
@@ -39,6 +39,62 @@ export const sumaryData = [
     },
 
 ]
+
+
+//dashboard assignment data
+
+export const assignCourseData = [
+   
+   {
+        name: 'Total Courses',
+        number: 20,
+        icon:BookOpenText,
+        action:{
+            name:'All Courses',
+            icon:Users,
+        }
+   },
+   
+    {
+        name: 'Pending Approval',
+        number: 12,
+        icon:ClipboardClock,
+        action:{
+            name:'Action requires',
+            icon:TriangleAlert,
+        }
+    },
+
+    {
+        name: 'Approved Courses',
+        number: 8,
+        icon:ListCheck,
+        action:{
+            name:'Courses Approved',
+            icon:Users,
+        }
+    },
+    {
+        name: 'Published Courses',
+        number: 5,
+        icon:BookOpenText,  
+        action:{
+            name:'Courses Published',
+            icon:Users,
+        }
+    }
+]
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -308,3 +364,17 @@ export const subData = [
    }    
 
 ]
+
+// export const getCardData =(section)=>{
+
+//  switch(section){
+//     case 'overview':
+//         return sumaryData;   
+//     case 'assignCourse':
+//         return assignCourseData;
+//     default:
+//         return sumaryData;
+// }
+// }
+
+

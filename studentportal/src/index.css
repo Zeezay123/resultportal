@@ -1,13 +1,52 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+/* @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap'); */
  @import "tailwindcss";
-@plugin "flowbite-react/plugin/tailwindcss";
+@import "flowbite-react/plugin/tailwindcss";
 @source "../.flowbite-react/class-list.json";
 @import "tw-animate-css";
 
 
+
+
  @custom-variant dark (&:is(.dark *));
 
+ body{
+  font-family:"Spline Sans", "sans-serif";
+  background-color: #d4e1ff;
+ }
+
+ /* Custom Scrollbar Styles */
+ ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+ }
+
+ ::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+ }
+
+ ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+  transition: background 0.3s ease;
+ }
+
+ ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+ }
+
+ /* Firefox Scrollbar */
+ * {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f1f1;
+ }      
+ 
+ 
+
+ 
 /* @import "tailwindcss";
+@import "flowbite-react/plugin/tailwindcss";
+@source "../.flowbite-react/class-list.json";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -148,7 +187,7 @@
 
  */
 
-  tr{ display: flex;
+  /* tr{ display: flex;
     width:70rem;
     min-height: 2.56rem;
     align-items: center;
@@ -158,28 +197,28 @@
     padding-left: 0;
     
  }
- 
+  */
  th, td {
     /* width: 10.5rem;
     word-wrap:break-word;
     line-clamp: 1; */
-    justify-content:flex-start;
+    /* justify-content:flex-start;
     align-items: center;
-    display: flex;
+    display: flex; */
  }
 
 
 
  th{
-   font-family: 'inter';
+   /* font-family: 'inter';
    font-size: 1em;
- 
+  */
  }
 
  td{
-   color: rgb(139, 138, 138);
+   /* color: rgb(139, 138, 138);
    font-size: 1em;
-   
+    */
 
 
  }

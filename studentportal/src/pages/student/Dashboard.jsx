@@ -1,11 +1,8 @@
 import React, { createContext, useState } from 'react'
-import Sidebar from '../components/Layout/Sidebar.jsx'
-import Mainbody from '../components/Layout/Mainbody.jsx'
-import { useLocation } from 'react-router-dom'
-import { useEffect } from 'react'
+import Sidebar from '../../components/Layout/Sidebar.jsx'
+import { ExpandContext } from '../hod/Dashboard.jsx'
 
 
-export const  ExpandContext = createContext()
 
 
 const Dashboard = () => {
@@ -17,8 +14,8 @@ const Dashboard = () => {
   return (
     <main className='flex'>
      <ExpandContext.Provider value={{expanded,setExpanded}} >
-      <Sidebar/>
-    { tab === 'Dashboard' && <Mainbody/> }
+    <div className='w-[15%]'> <Sidebar/> </div> 
+  
      
       </ExpandContext.Provider> 
        

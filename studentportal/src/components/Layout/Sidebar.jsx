@@ -1,21 +1,29 @@
 import React, { useState,useRef, useContext,useEffect } from 'react'
 import { lazy } from 'react';
 import logo from '../../assets/delsulogo.png'
-import sideBarData from '../data/SidebarData';
-import { ExpandContext } from '../../pages/hod/Dashboard.jsx'
+
+// import { ExpandContext } from '../../pages/hod/Dashboard.jsx'
+
 import { LayoutDashboard, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { getSidebarDataByRole } from '../data/SidebarData';
 
 
 
 
 
 const SidebarComp = () => {
-const {expanded} = useContext(ExpandContext)
+// const {expanded} = useContext(ExpandContext)
+
+const [expanded, setExpanded] = useState(false);
+const {role} = useSelector((state)=>state.user)
+
+const sideBarData = getSidebarDataByRole(role);
+
 
 //location
 const location = useLocation();
-const [tab, setTab] = useState('')
 
 //turning sidebar on and off
 const [turnChev, setTurnChev]= useState(null)  
@@ -26,20 +34,6 @@ const activeStyles = {
 background: "#487FFF", 
 color: "white",
 }
-
-
-
-
-
-useEffect(() => {
-  const urlParams = new URLSearchParams(location.search)
-  const tabFromUrl = urlParams.get('tab')
-
-if(tabFromUrl)
-{
-  setTab(tabFromUrl)
-}
-}, [location.search])
 
 
 
@@ -68,26 +62,29 @@ return first + last
 
   return (
    
-    <div className={`flex flex-col ${expanded ? 'w-18 items-center':'min-w-64  '}  h-screen justify-between `}>
+    <div className={`flex flex-col gap-2 bg-blue-800 border-r border-slate-300/10 backdrop-blur-lg  ${expanded ? 'w-18 items-center':'min-w-64'}  h-screen justify-between flex-shrink-0 `}>
       <div className=''>
     <header className={`${expanded ? 'justtify-start items-start pl-5':'justify-center '} flex flex-col p-2 max-w-52 gap-2 items-center  `}>
     
     <div className={`drop-shadow-sm ${expanded ? 'w-7 h-8':'w-18 h-20'}  object-cover`}> <img src={logoItems.image} alt=""  className='w-full h-full'/> </div>
-  <div className={`${expanded ? 'hidden' : ' flex'} w-full px-2 flex-col items-center justify-center`}>  <h1 className='font-[inter] font-bold text-sm'>{logoItems.main} </h1> 
-    <h5 className='font-[inter] text-xs text-slate-700 font-normal'> {logoItems.sub}</h5></div> 
+  <div className={`${expanded ? 'hidden' : ' flex text-white'} w-full px-2 flex-col items-center justify-center`}>  <h1 className='font-[inter] font-bold text-sm'>{logoItems.main} </h1> 
+    <h5 className='font-[inter] text-xs text-slate-100 font-normal'> {logoItems.sub}</h5></div> 
 
     </header>
     
-    <main className={`flex flex-col ${expanded ? 'gap-0':'gap-5' }   justify-between w-full py-2 px-3`}>
+    <main className={`flex flex-col  ${expanded ? 'gap-0':'gap-5' }   justify-between w-full py-2 px-3`}>
     
     {mainItems.map((header,index)=>(
-     <div key={index} className='flex flex-col  w-full cursor-default'> 
-   { expanded ? <></>:(<h4 className='text-slate-600 font-medium font-[inter] text-xs p-2 '>{header.title} </h4> )}
+     <div key={index} className='flex flex-col gap-1 w-full cursor-default'> 
+   { expanded ? <></>:(<h4 className='text-slate-200 font-medium font-[inter] text-xs p-2 '>{header.title} </h4> )}
      {header.items.map((item,index)=>(
 
       <div key={index} className='flex flex-col'> 
-      <NavLink key={index} to={`/?tab=${item.name}`}  className={`flex justify-between  h-8 rounded-md px-2 gap-2 items-center ${item.name === tab ? 'bg-blue-600 text-white' : ' bg-white'} 
-       hover:text-white hover:bg-blue-600 text-black`} 
+      <NavLink 
+        key={index} 
+        to={item.url}  
+        className={({isActive}) => `flex justify-between h-8 rounded-md px-2 gap-2 items-center ${isActive ? 'bg-white/10 backdrop-blur-lg border border-white/20 shadow-lg text-white' : ' text-slate-100'} 
+         hover:text-white hover:bg-white/10 hover:backdrop-blur-lg hover:border hover:border-white/20 `}
        onClick={()=>handleTogle(item.name)}
        >
         
@@ -123,9 +120,15 @@ return first + last
   className={`border-l-[1px] border-slate-200 overflow-hidden w-[85%] mx-auto transition-all duration-1000 ease-in-out`}>
    { expanded ? <></>:  item.items.map((drop,index)=>(
    
-        <NavLink to={`${drop.name == 'Overview' ? `/?tab=Dashboard`:`/?tab=${drop.name}`} `} className='flex items-center mx-4 my-1 gap-2   rounded-lg px-2 py-1 hover:bg-blue-50' key={index}>
-        <div > <drop.icon size={14}/> </div>
-         <h5 className='text-sm text-slate-700 font-[inter] font-medium'>{drop.name}</h5></NavLink>
+        <NavLink 
+          to={drop.url} 
+          className={({isActive}) => `flex items-center mx-4 my-1 gap-2 rounded-lg px-2 py-1
+           ${isActive ? 'bg-white/10 backdrop-blur-lg  border border-white/20 shadow-lg text-slate-200' :
+             'hover:bg-white/10 hover:border bover:backdrop-blur-lg hover:text-white text-slate-200'} `}
+          key={index}
+        >
+        <div className='text-slate-200' > <drop.icon size={14}/> </div>
+         <h5 className='text-sm text-slate-200 font-[inter] font-medium'>{drop.name}</h5></NavLink>
 )) }
   </div>
 

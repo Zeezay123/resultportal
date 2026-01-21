@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { subData } from '../data/dashboardCard'
+import { subData } from '../../data/dashboardCard.js'
 import { Button, FileInput, Modal, ModalBody, ModalHeader, Popover, TextInput } from 'flowbite-react'
 import { BadgeInfo, Download, Filter } from 'lucide-react'
-import ReusableModal from '../ui/ReusableModal'
+import ReusableModal from '../../ui/ReusableModal.jsx'
+import Navbar from '../Navbar.jsx'
 
 
 const Submissions = () => {
@@ -65,8 +66,13 @@ setOpenModal(true)
 }
 
   return (
-    <main className='grid grid-rows-1 p-8 gap-7 overflow'>
-
+    <main className='grid grid-rows-1 p-8 gap-7 overflow max-w-7xl mx-auto rounded-lg '>
+ 
+    <div className='grid grid-rows-1 place-content-start p-4'>
+      
+       <h1 className='font-[inter] font-bold text-xl md:text-3xl'>Dashboard</h1>
+      <h5 className='font-[inter] text-sm text-slate-600'> An Overview of Result Portal </h5>
+     </div>
    <div className='flex items-center justify-between md:px-10'> 
     <div></div>
 
