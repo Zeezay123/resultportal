@@ -52,9 +52,16 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if(!formData.username || !formData.password || !formData.role || !formData.department){
-      
-      return dispatch(signInFailure("All fields are required"));
+    // Senate and SuperAdmin don't require department
+    const rolesWithoutDepartment = ['senate', 'superadmin'];
+    const requiresDepartment = !rolesWithoutDepartment.includes(formData.role?.toLowerCase());
+    
+    if(!formData.username || !formData.password || !formData.role){
+      return dispatch(signInFailure("Username, password and role are required"));
+    }
+    
+    if(requiresDepartment && !formData.department){
+      return dispatch(signInFailure("Department is required for this role"));
     }
 
 
@@ -179,11 +186,15 @@ const Login = () => {
                 <option value=''>Select your role</option>
                 <option value='student'>Student</option>
                 <option value='lecturer'>Lecturer</option>
+                <option value='advisor'>Advisor</option>
                 <option value='admin'>HOD</option>
+                <option value='senate'>Senate</option>
+                <option value='superadmin'>Super Admin</option>
               </Select>
             </div>
 
-            {/* Department */}
+            {/* Department - Hidden for Senate and SuperAdmin */}
+            {!['senate', 'superadmin'].includes(formData.role?.toLowerCase()) && (
             <div>
               <Label htmlFor='department' value='Department' className='mb-2 block font-semibold' />
               <Select
@@ -206,6 +217,7 @@ const Login = () => {
                 ))}
               </Select>
             </div>
+            )}
 
             {/* Submit Button */}
             <Button

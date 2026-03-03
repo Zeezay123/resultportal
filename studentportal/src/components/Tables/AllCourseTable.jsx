@@ -1,6 +1,6 @@
 import React,{useState, useEffect} from 'react'
 import {  Checkbox, Popover, Select, Spinner, TextInput } from 'flowbite-react'
-import { Filter, Info, Plus, PlusCircle, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Filter, Info, Plus, PlusCircle, Search } from 'lucide-react'
 import Button from '../ui/Button'
 import { useSelector } from 'react-redux'
 
@@ -17,24 +17,32 @@ const AllCourseTable = () => {
     const [error, setError] = useState(null)
     const [limit, setLimit] = useState(10)
     const [page, setPage] = useState(1)
-    const [offset, setOffset] = useState(0)
+    const [totalCourses, setTotalCourses] = useState(0)
+    const [totalPages, setTotalPages] = useState([]) 
+    
 
-   const courseLength = ''
+
+
     
     const HodID = useSelector((state) => state.user.department);
 
     useEffect(() => {
+     
         const handler = setTimeout(() => {
             setDebouncedTerm(searchTerm)
         }, 1000); // 1 second debounce
         return () => {
             clearTimeout(handler);
         };
+
+
+        
     }, [searchTerm]);
 
     // Fetch courses whenever filters change
     useEffect(() => {
         fetchCourses();
+        
     }, [debouncedTerm, courseCategory, courseType, programmeID, assignmentStatus, limit, page]);
 
     const fetchCourses = async () => {
@@ -50,8 +58,8 @@ const AllCourseTable = () => {
             if (assignmentStatus) params.append('assignmentStatus', assignmentStatus);
             params.append('limit', limit);
             params.append('page', page);
-            const response = await fetch(`http://localhost:5000/api/hod/courses/getcourses/${HodID}?${params.toString()}`, {
-                credentials: 'include' // Include cookies for authentication
+            const response = await fetch(`/api/hod/courses/getcourses/${HodID}?${params.toString()}`, {
+                credentials: 'include' 
             });
 
             if (!response.ok) {
@@ -61,6 +69,17 @@ const AllCourseTable = () => {
             const data = await response.json();
             console.log("Fetched Courses Data:", data);
             setCourses(data.courses || []);
+             const pagesArray = Array.from({ length:data.totalPages}, (_, i) => i + 1)
+            setTotalPages(pagesArray);
+
+      //        const respoe = {
+      //   success: true,
+      //   count: result.recordset.length,
+      //   totalCourses,
+      //   totalPages,
+      //   currentPage: page,
+      //   courses: result.recordset
+      // };
         } catch (err) {
             setError(err.message);
             console.error('Error fetching courses:', err);
@@ -171,9 +190,6 @@ const AllCourseTable = () => {
                 <th className='text-left p-4'> Faculty </th>
                 <th className='text-left p-4'> Department </th>
                 <th className='text-left p-4'> Level </th>
-                <th className='text-left p-4'> Semester </th>
-                <th className='text-left p-4'> Session </th> 
-                <th className='text-left p-4'> Unit </th>
                 <th className='text-left p-4'> Assigned Lecturer </th>
                 <th className='text-left p-4'> Assignment Status </th>
                 <th className='text-left p-4'> Assigned date </th>
@@ -206,9 +222,7 @@ const AllCourseTable = () => {
                 <td className='p-4'>{course.FacultyName || 'All'}</td>
                 <td className='p-4'>{course.DepartmentName || 'All'}</td>
                 <td className='p-4'>{course.LevelName || '-'}</td>
-                <td className='p-4'>{course.SemesterName || '-'}</td>
-                <td className='p-4'>{course.SessionName || '-'}</td>
-                <td className='p-4'>{course.CreditUnits}</td>
+              
                 <td className='p-4'>{course.AssignedLecturer || 'Not assigned'}</td>
                 <td className='p-4'>
                   <span className={`px-2 py-1 rounded text-xs ${
@@ -235,7 +249,27 @@ const AllCourseTable = () => {
 
     <div className='flex text-gray-500 text-xs ' >Showing 10 of 50 </div>
 
-    <div className=''> </div>
+    <div className='flex items-center gap-4'> 
+      {/* previous */}
+
+     <span onClick={()=>setPage((prev)=> Math.max(prev - 1, 1))}
+     className={`flex items-center justify-center  rounded-full border border-slate-300 ${page === 1 ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={page === 1}> <ChevronLeft size={20} /> </span>      
+
+      {/* page numbers */}
+      <span className='flex text-xs gap-3 items-center  text-gray-500'> 
+      
+      {totalPages.map((pageNum) => (
+        <span key={pageNum} onClick={() => setPage(pageNum)}
+         className={`border text-center border-slate-300 w-6 h-6 rounded-full flex items-center
+           justify-center ${pageNum === page ? 'bg-blue-500 text-white' : ''} `}>{pageNum}</span>
+      ))}
+      
+      </span> 
+      
+      {/* next */}
+      <span onClick={()=>setPage((prev) =>Math.min(prev + 1, totalPages.length))}
+       className={`flex items-center justify-center  rounded-full border border-slate-300 ${page === totalPages.length ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={page === totalPages.length}> <ChevronRight size={20} /> </span>      
+      </div>
     </div>
     </div>
   )

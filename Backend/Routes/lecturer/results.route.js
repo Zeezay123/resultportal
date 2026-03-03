@@ -1,7 +1,8 @@
 import express from 'express';
 import multer from 'multer';
-import { downloadResultTemplate, uploadResults } from '../../Controllers/lecturer/results.controller.js';
+import { downloadResultTemplate, uploadResults, getUploadedResults, updateScoreById, submitResultsToHOD } from '../../Controllers/lecturer/results.controller.js';
 import { VerifyUser } from '../../utils/VerifyUser.js';
+import { getTestResults } from '../../Controllers/hod/results.controller.js';
 
 const router = express.Router();
 
@@ -28,6 +29,11 @@ const upload = multer({
 });
 
 router.get('/download-template', VerifyUser, downloadResultTemplate);
-router.post('/upload', VerifyUser, upload.single('file'), uploadResults);
+router.post('/upload/:id', VerifyUser, upload.single('file'), uploadResults);
+router.get('/getUploadedResults/:lectid', VerifyUser, getUploadedResults);
+router.put('/updateResult/:lectid', VerifyUser, updateScoreById);
+router.put('/submitToHOD/:lectid', VerifyUser, submitResultsToHOD);
+router.get('/testResults/:id', VerifyUser, getTestResults);
+router.get('/editResults/:id', VerifyUser, getTestResults);
 
 export default router;

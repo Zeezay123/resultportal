@@ -2,43 +2,23 @@ import React from 'react'
 import logo from '../../assets/delsulogo.png'
 import avatar from '../../assets/avatar.jpg'
 import {
-  Construction,
   LayoutDashboard,
-  Monitor,
-  Bug,
-  ListTodo,
-  FileX,
   HelpCircle,
-  Lock,
-  Bell,
-  Package,
-  Palette,
-  ServerOff,
-  Settings,
-  Wrench,
-  UserCog,
-  UserX,
-  Users,
-  MessagesSquare,
-  ShieldCheck,
-  AudioWaveform,
-  Command,
-  GalleryVerticalEnd,
-  FileCheck,
   BookOpen,
-  UserPlus,
-  ClipboardList,
-  GraduationCap,
-  FileText,
+  UserCog,
+  Users,
+  FileCheck,
   CheckCircle,
   Settings2,
+  ClipboardList,
+  GraduationCap,
 } from 'lucide-react'
 
 // HOD Sidebar Data
 const hodSidebarData = { 
   logoItems : {
     main:"Delta State University", 
-    sub: "HOD Portal",
+    sub: "HOD",
     image: logo,
   },
 
@@ -61,12 +41,14 @@ const hodSidebarData = {
               url: '/hod/assign-course/lecturer',
               icon:UserCog,
             },
-        {
-              name: 'Type/Category',
-              url: '/hod/assign-course/category',
-              icon:Settings2,
-            }]
+       ]
         }, 
+         {
+          name:'Assign Advisors',
+          url:'/hod/assign-advisors',
+          icon: Users,
+          items:[]
+        },
         {
           name:'Results',
           url:'/hod/results',
@@ -80,53 +62,12 @@ const hodSidebarData = {
               name: 'Exam Results',
               url: '/hod/exam-results',
               icon:Settings2,
+            },
+        {
+              name: 'Level Results',
+              url: '/hod/level-results',
+              icon:CheckCircle,
             }]
-        },
-       
-        {
-          name:'Lecturers',
-          url:'/hod/lecturers',
-          icon: Users,
-          items:[]
-        }, 
-        {
-          name:'Students',
-          url:'/hod/students',
-          icon: GraduationCap,
-          items:[]
-        },
-        {
-          name:'Reports',
-          url:'/hod/reports',
-          icon: FileText,
-          items:[]
-        }
-      ]
-    },
-    {
-      title:"Settings",
-      items: [
-        {
-          name:'Settings',
-          url:'/hod/settings',
-          icon: Settings,
-          items:[
-            {
-              name: 'Profile',
-              url: '/hod/settings/profile',
-              icon:UserCog,
-            },
-            {
-              name:'Account',
-              url:'/hod/settings/account',
-              icon:Wrench,
-            },
-            {
-              name: 'Notifications',
-              url: '/hod/settings/notifications',
-              icon: Bell,
-            },
-          ]
         },
         {
           name:'Help Center',
@@ -149,7 +90,7 @@ const hodSidebarData = {
 const lecturerSidebarData = { 
   logoItems : {
     main:"Delta State University", 
-    sub: "Lecturer Portal",
+    sub: "Lecturer",
     image: logo,
   },
 
@@ -162,58 +103,24 @@ const lecturerSidebarData = {
           url:'/lecturer/dashboard',
           icon: LayoutDashboard,
           items:[]
-        }, 
+        },
          {
           name:'Submit Results',
-          url:'/lecturer/submit-results',
+          url:'/lecturer/test-results',
           icon: ClipboardList,
           items:[]
-        }, 
+        },
+        {
+          name:'Uploaded Results',
+          url:'/lecturer/uploaded-results',
+          icon: FileCheck,
+          items:[]
+        },
         {
           name:'My Courses',
           url:'/lecturer/courses',
           icon: BookOpen,
           items:[]
-        },
-       
-        {
-          name:'Students',
-          url:'/lecturer/students',
-          icon: GraduationCap,
-          items:[]
-        },
-        {
-          name:'Submissions',
-          url:'/lecturer/submissions',
-          icon: CheckCircle,
-          items:[]
-        }
-      ]
-    },
-    {
-      title:"Settings",
-      items: [
-        {
-          name:'Settings',
-          url:'/lecturer/settings',
-          icon: Settings,
-          items:[
-            {
-              name: 'Profile',
-              url: '/lecturer/settings/profile',
-              icon:UserCog,
-            },
-            {
-              name:'Account',
-              url:'/lecturer/settings/account',
-              icon:Wrench,
-            },
-            {
-              name: 'Notifications',
-              url: '/lecturer/settings/notifications',
-              icon: Bell,
-            },
-          ]
         },
         {
           name:'Help Center',
@@ -236,7 +143,7 @@ const lecturerSidebarData = {
 const studentSidebarData = { 
   logoItems : {
     main:"Delta State University", 
-    sub: "Student Portal",
+    sub: "Student",
     image: logo,
   },
 
@@ -257,45 +164,6 @@ const studentSidebarData = {
           items:[]
         },
         {
-          name:'Results',
-          url:'/student/results',
-          icon: FileCheck,
-          items:[]
-        }, 
-        {
-          name:'Profile',
-          url:'/student/profile',
-          icon: UserCog,
-          items:[]
-        }
-      ]
-    },
-    {
-      title:"Settings",
-      items: [
-        {
-          name:'Settings',
-          url:'/student/settings',
-          icon: Settings,
-          items:[
-            {
-              name: 'Profile',
-              url: '/student/settings/profile',
-              icon:UserCog,
-            },
-            {
-              name:'Account',
-              url:'/student/settings/account',
-              icon:Wrench,
-            },
-            {
-              name: 'Notifications',
-              url: '/student/settings/notifications',
-              icon: Bell,
-            },
-          ]
-        },
-        {
           name:'Help Center',
           url:'/help',
           icon: HelpCircle,
@@ -311,6 +179,89 @@ const studentSidebarData = {
     email:'student@delsu.edu.ng'
   }
 }
+// Level Advisor Sidebar Data
+const AdvisorSidebarData = { 
+  logoItems : {
+    main:"Delta State University", 
+    sub: "Level Advisor",
+    image: logo,
+  },
+
+  mainItems : [
+    {  
+      title: 'General',
+      items:[
+        // {
+        //   name:'Dashboard',
+        //   url:'/advisor/dashboard',
+        //   icon: LayoutDashboard,
+        //   items:[]
+        // }, 
+      
+    
+        {
+          name:'Results',
+          url:'/advisor/results',
+          icon: FileCheck,
+          items:[]
+        },
+        {
+          name:'Help Center',
+          url:'/help',
+          icon: HelpCircle,
+          items:[]
+        },
+      ]
+    },
+  ],
+
+  bottomSide : {
+    image: avatar,
+    username: 'Level Advisor',
+    email:'advisor@delsu.edu.ng'
+  }
+}
+
+// Senate Sidebar Data
+const SenateSidebarData = { 
+  logoItems : {
+    main:"Delta State University", 
+    sub: "Senate",
+    image: logo,
+  },
+
+  mainItems : [
+    {  
+      title: 'General',
+      items:[
+        {
+          name:'Dashboard',
+          url:'/senate/dashboard',
+          icon: LayoutDashboard,
+          items:[]
+        }, 
+        {
+          name:'Results Review',
+          url:'/senate/results',
+          icon: FileCheck,
+          items:[]
+        },
+        {
+          name:'Help Center',
+          url:'/help',
+          icon: HelpCircle,
+          items:[]
+        },
+      ]
+    },
+  ],
+
+  bottomSide : {
+    image: avatar,
+    username: 'Senate User',
+    email:'senate@delsu.edu.ng'
+  }
+}
 
 // Function to get sidebar data based on role
 export const getSidebarDataByRole = (role) => {
@@ -321,6 +272,10 @@ export const getSidebarDataByRole = (role) => {
       return lecturerSidebarData;
     case 'Student':
       return studentSidebarData;
+    case 'Advisor':
+      return AdvisorSidebarData;
+    case 'Senate':
+      return SenateSidebarData;
     default:
       return studentSidebarData; // Default to student
   }

@@ -1,252 +1,183 @@
 import React, { useState, useEffect } from 'react'
-import { Select, TextInput, Spinner, Modal, Badge } from 'flowbite-react'
-import { Search, Filter, Eye, CheckCircle, XCircle, FileSpreadsheet, TrendingUp, Award, Download } from 'lucide-react'
+import { Select, TextInput, Spinner, Modal, ModalBody, ModalHeader } from 'flowbite-react'
+import { Search, Filter, Eye, CheckCircle, XCircle, Download, X } from 'lucide-react'
 import Button from '../../components/ui/Button'
+import { useSelector } from 'react-redux'
 
 const ReviewExamResults = () => {
   const [loading, setLoading] = useState(true);
   const [submissions, setSubmissions] = useState([]);
-  const [filteredSubmissions, setFilteredSubmissions] = useState([]);
-  const [selectedSession, setSelectedSession] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [selectedSubmission, setSelectedSubmission] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    fetchPendingSubmissions();
-  }, []);
+  const hodId = useSelector((state) => state.user.department);
 
   useEffect(() => {
-    filterSubmissions();
-  }, [selectedSession, selectedSemester, selectedLevel, searchTerm, submissions]);
+    fetchExamResults();
+  }, [selectedSemester, selectedLevel, searchTerm]);
 
-  const fetchPendingSubmissions = async () => {
+  // Fetch exam results from backend
+  const fetchExamResults = async () => {
     try {
-      setLoading(true);
-      // Mock data - replace with API call
-      const mockSubmissions = [
-        {
-          id: 1,
-          courseCode: 'CSC101',
-          courseName: 'Introduction to Computer Science',
-          level: '100L',
-          session: '2024/2025',
-          semester: 'First',
-          lecturerName: 'Prof. Sarah Williams',
-          uploadedDate: '2026-01-13',
-          studentsCount: 52,
-          fileName: 'CSC101_Final_Results.xlsx',
-          caStatus: 'Approved',
-          caAverage: 22.5,
-          examAverage: 45.8,
-          totalAverage: 68.3,
-          passRate: 85.5,
-          gradeDistribution: {
-            A: 8,
-            B: 15,
-            C: 18,
-            D: 6,
-            E: 3,
-            F: 2
-          }
+      const params = new URLSearchParams();
+      if (selectedSemester) params.append('semesterID', selectedSemester);
+      if (selectedLevel) params.append('levelID', selectedLevel);
+      if (searchTerm) params.append('search', searchTerm);
+
+      const res = await fetch(`/api/hod/results/examResults/${hodId}?${params.toString()}`, {
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        console.error("Failed to fetch exam results", res.statusText);
+        return;
+      }
+
+      const data = await res.json();
+      setSubmissions(data.results);
+      console.log(data);
+
+    } catch (error) {
+      console.error("fetchExamResults error:", error);
+    }
+  }
+
+  // View exam details
+  const handleViewDetails = async (courseID, submittedBy) => {
+    try {
+      const res = await fetch(`/api/hod/results/viewExamResults/${hodId}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
         },
-        {
-          id: 2,
-          courseCode: 'MTH201',
-          courseName: 'Mathematical Methods',
-          level: '200L',
-          session: '2024/2025',
-          semester: 'First',
-          lecturerName: 'Dr. Ahmed Ibrahim',
-          uploadedDate: '2026-01-12',
-          studentsCount: 45,
-          fileName: 'MTH201_Final_Results.xlsx',
-          caStatus: 'Approved',
-          caAverage: 20.1,
-          examAverage: 42.3,
-          totalAverage: 62.4,
-          passRate: 78.2,
-          gradeDistribution: {
-            A: 5,
-            B: 12,
-            C: 15,
-            D: 8,
-            E: 3,
-            F: 2
-          }
-        },
-        {
-          id: 3,
-          courseCode: 'PHS301',
-          courseName: 'Advanced Physiology',
-          level: '300L',
-          session: '2024/2025',
-          semester: 'First',
-          lecturerName: 'Dr. Elizabeth Okonkwo',
-          uploadedDate: '2026-01-14',
-          studentsCount: 38,
-          fileName: 'PHS301_Final_Results.xlsx',
-          caStatus: 'Approved',
-          caAverage: 24.2,
-          examAverage: 51.6,
-          totalAverage: 75.8,
-          passRate: 92.1,
-          gradeDistribution: {
-            A: 12,
-            B: 16,
-            C: 7,
-            D: 2,
-            E: 1,
-            F: 0
-          }
+        body: JSON.stringify({
+          courseID,
+          staffCode: submittedBy
+        })
+      });
+
+      if (!res.ok) {
+        console.error("Failed to fetch exam result details", res.statusText);
+        return;
+      }
+
+      const data = await res.json();
+      console.log("Selected Exam Submission Details:", data);
+      setSelectedSubmission(data.students);
+      setShowViewModal(true);
+
+    } catch (error) {
+      console.error("handleViewDetails error:", error);
+    }
+  }
+
+  // Download exam results
+  const handleDownload = async (courseID, staffCode) => {
+    setActionLoading(true);
+
+    try {
+      const params = new URLSearchParams({
+        courseID,
+        staffCode
+      });
+
+      const res = await fetch(`/api/hod/results/downloadExamResults/${hodId}?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        console.error("Failed to download exam results", res.statusText);
+        alert("Failed to download exam results");
+        return;
+      }
+
+      // Get filename from header
+      const contentDisposition = res.headers.get('Content-Disposition');
+      let filename = 'exam_results.xlsx';
+
+      if (contentDisposition) {
+        const matches = /filename="([^"]+)"/.exec(contentDisposition);
+        if (matches && matches[1]) {
+          filename = matches[1];
         }
-      ];
-      setSubmissions(mockSubmissions);
-      setFilteredSubmissions(mockSubmissions);
-    } catch (err) {
-      console.error('Failed to fetch submissions:', err);
+      }
+
+      // Create blob and download
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+    } catch (error) {
+      console.error("handleDownload error:", error);
+      alert("An error occurred while downloading the file");
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
-  };
+  }
 
-  const filterSubmissions = () => {
-    let filtered = [...submissions];
+const handleApproval= async(status, courseID, staffCode)=>{
 
-    if (selectedSession) {
-      filtered = filtered.filter(sub => sub.session === selectedSession);
-    }
-    if (selectedSemester) {
-      filtered = filtered.filter(sub => sub.semester === selectedSemester);
-    }
-    if (selectedLevel) {
-      filtered = filtered.filter(sub => sub.level === selectedLevel);
-    }
-    if (searchTerm) {
-      filtered = filtered.filter(sub => 
-        sub.courseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sub.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        sub.lecturerName.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+  try {
+    const res = await fetch(`/api/hod/results/approveOrReject/${hodId}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        courseID: courseID,
+        staffCode: staffCode,
+        status: status
+      })
+    })
 
-    setFilteredSubmissions(filtered);
-  };
-
-  const handleViewDetails = (submission) => {
-    setSelectedSubmission(submission);
-    setShowViewModal(true);
-  };
-
-  const handleApprove = async (submissionId) => {
-    if (!confirm('Are you sure you want to approve these final exam results? This action will finalize the grades for all students.')) {
+    if (!res.ok) {
+      alert(`Failed to ${status.toLowerCase()} exam results`);
+      console.error(`Failed to ${status.toLowerCase()} exam results`, res.statusText);
       return;
     }
 
-    try {
-      setActionLoading(true);
-      // API call would go here
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      alert('Exam results approved successfully! Student grades have been finalized.');
-      fetchPendingSubmissions();
-      setShowViewModal(false);
-    } catch (err) {
-      alert('Failed to approve: ' + err.message);
-    } finally {
-      setActionLoading(false);
-    }
-  };
+    alert(`Exam results ${status.toLowerCase()} successfully`);
+    // Refresh the submissions list after approval/rejection
+    fetchExamResults();
+  } catch (error) {
+    console.error(` ${status} error:`, error);
+  }
+ 
+}
 
-  const handleReject = async (submissionId) => {
-    const reason = prompt('Please provide a reason for rejection:');
-    if (!reason) return;
+  const avgTest = selectedSubmission ? Math.round(selectedSubmission.reduce((sum, subm) => {
+    return sum + (subm.CA_Score || 0)}, 0) / selectedSubmission.length) : 0
+ 
+    const avgExam = selectedSubmission ? Math.round(selectedSubmission.reduce((sum, subm) => {
+      return sum + (subm.Exam_Score || 0)}, 0) / selectedSubmission.length) : 0
+ 
+    const passCount = selectedSubmission ? selectedSubmission.filter(subm => subm.Remarks === 'Pass').length : 0;
+    const failCount = selectedSubmission ? selectedSubmission.filter(subm => subm.Remarks === 'Fail').length : 0;
+    
 
-    try {
-      setActionLoading(true);
-      // API call would go here with reason
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      alert('Exam results rejected. Lecturer will be notified to make corrections.');
-      fetchPendingSubmissions();
-      setShowViewModal(false);
-    } catch (err) {
-      alert('Failed to reject: ' + err.message);
-    } finally {
-      setActionLoading(false);
-    }
-  };
 
-  const downloadFile = (fileName) => {
-    alert(`Downloading ${fileName}...`);
-  };
-
-  const getPassRateColor = (passRate) => {
-    if (passRate >= 80) return 'text-green-600';
-    if (passRate >= 60) return 'text-blue-600';
-    if (passRate >= 40) return 'text-amber-600';
-    return 'text-red-600';
-  };
 
   return (
     <div className='flex flex-col gap-4 p-4'>
       {/* Header */}
       <div className='flex flex-col gap-2 mb-4'>
-        <h1 className='text-2xl font-bold text-white'>Review Exam Results</h1>
-        <p className='text-sm text-slate-300'>Review and approve final examination results submitted by lecturers</p>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-        <div className='bg-white p-4 rounded-lg shadow-sm'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <p className='text-sm text-gray-500'>Pending Review</p>
-              <p className='text-2xl font-bold text-gray-900'>{filteredSubmissions.length}</p>
-            </div>
-            <FileSpreadsheet size={32} className='text-amber-500' />
-          </div>
-        </div>
-        <div className='bg-white p-4 rounded-lg shadow-sm'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <p className='text-sm text-gray-500'>Total Students</p>
-              <p className='text-2xl font-bold text-gray-900'>
-                {filteredSubmissions.reduce((sum, sub) => sum + sub.studentsCount, 0)}
-              </p>
-            </div>
-            <Award size={32} className='text-blue-500' />
-          </div>
-        </div>
-        <div className='bg-white p-4 rounded-lg shadow-sm'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <p className='text-sm text-gray-500'>Avg Pass Rate</p>
-              <p className='text-2xl font-bold text-green-600'>
-                {filteredSubmissions.length > 0 
-                  ? (filteredSubmissions.reduce((sum, sub) => sum + sub.passRate, 0) / filteredSubmissions.length).toFixed(1)
-                  : 0}%
-              </p>
-            </div>
-            <TrendingUp size={32} className='text-green-500' />
-          </div>
-        </div>
-        <div className='bg-white p-4 rounded-lg shadow-sm'>
-          <div className='flex items-center justify-between'>
-            <div>
-              <p className='text-sm text-gray-500'>Avg Total Score</p>
-              <p className='text-2xl font-bold text-purple-600'>
-                {filteredSubmissions.length > 0 
-                  ? (filteredSubmissions.reduce((sum, sub) => sum + sub.totalAverage, 0) / filteredSubmissions.length).toFixed(1)
-                  : 0}
-              </p>
-            </div>
-            <CheckCircle size={32} className='text-purple-500' />
-          </div>
-        </div>
+        <h1 className='text-2xl font-bold text-black'>Review Exam Results</h1>
+        <p className='text-sm text-slate-600'>Review and approve final examination results submitted by lecturers</p>
       </div>
 
       {/* Filters */}
@@ -256,7 +187,7 @@ const ReviewExamResults = () => {
           <h2 className='font-semibold'>Filters</h2>
         </div>
         <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
-          <Select value={selectedSession} onChange={(e) => setSelectedSession(e.target.value)}>
+          <Select>
             <option value="">All Sessions</option>
             <option value="2024/2025">2024/2025</option>
             <option value="2023/2024">2023/2024</option>
@@ -289,12 +220,7 @@ const ReviewExamResults = () => {
           <p className='text-sm text-gray-500'>Review final examination submissions waiting for approval</p>
         </div>
 
-        {loading ? (
-          <div className='flex justify-center items-center py-20'>
-            <Spinner size='xl' />
-            <span className='ml-3 text-gray-600'>Loading submissions...</span>
-          </div>
-        ) : filteredSubmissions.length === 0 ? (
+        {submissions.length === 0 ? (
           <div className='flex flex-col justify-center items-center py-20 text-gray-500'>
             <CheckCircle size={48} className='mb-4 text-gray-300' />
             <p className='text-lg font-medium'>No pending submissions</p>
@@ -309,69 +235,69 @@ const ReviewExamResults = () => {
                   <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>Lecturer</th>
                   <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>Level</th>
                   <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>Students</th>
-                  <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>Avg (CA/Exam/Total)</th>
-                  <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>Pass Rate</th>
-                  <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>Uploaded</th>
                   <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase'>Actions</th>
                 </tr>
               </thead>
               <tbody className='bg-white divide-y divide-gray-200'>
-                {filteredSubmissions.map((submission) => (
-                  <tr key={submission.id} className='hover:bg-gray-50'>
-                    <td className='px-4 py-4'>
-                      <div className='flex flex-col'>
-                        <span className='font-medium text-gray-900'>{submission.courseCode}</span>
-                        <span className='text-sm text-gray-500'>{submission.courseName}</span>
-                      </div>
-                    </td>
-                    <td className='px-4 py-4 text-sm'>{submission.lecturerName}</td>
-                    <td className='px-4 py-4 text-sm'>{submission.level}</td>
-                    <td className='px-4 py-4 text-sm'>{submission.studentsCount}</td>
-                    <td className='px-4 py-4'>
-                      <div className='flex flex-col text-sm'>
-                        <span className='text-gray-600'>CA: {submission.caAverage}</span>
-                        <span className='text-gray-600'>Exam: {submission.examAverage}</span>
-                        <span className='font-medium text-gray-900'>Total: {submission.totalAverage}</span>
-                      </div>
-                    </td>
-                    <td className='px-4 py-4'>
-                      <span className={`text-lg font-bold ${getPassRateColor(submission.passRate)}`}>
-                        {submission.passRate}%
-                      </span>
-                    </td>
-                    <td className='px-4 py-4 text-sm text-gray-500'>
-                      {new Date(submission.uploadedDate).toLocaleDateString()}
-                    </td>
-                    <td className='px-4 py-4'>
-                      <div className='flex items-center gap-2'>
-                        <button
-                          onClick={() => handleViewDetails(submission)}
-                          className='flex items-center gap-1 px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium transition-colors'
-                          title='View Details'
-                        >
-                          <Eye size={16} />
-                          View
-                        </button>
-                        <button
-                          onClick={() => handleApprove(submission.id)}
-                          className='flex items-center gap-1 px-3 py-1.5 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors'
-                          title='Approve'
-                        >
-                          <CheckCircle size={16} />
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => handleReject(submission.id)}
-                          className='flex items-center gap-1 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors'
-                          title='Reject'
-                        >
-                          <XCircle size={16} />
-                          Reject
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {submissions.map((submission) => {
+                  return (
+                    <tr key={submission.CourseID} className='hover:bg-gray-50'>
+                      <td className='px-4 py-4'>
+                        <div className='flex flex-col'>
+                          <span className='font-medium text-gray-900'>{submission.CourseCode}</span>
+                          <span className='text-sm text-gray-500'>{submission.CourseName}</span>
+                        </div>
+                      </td>
+                      <td className='px-4 py-4 text-sm'>{submission.LecturerName}</td>
+                      <td className='px-4 py-4 text-sm'>{submission.LevelName}</td>
+                      <td className='px-4 py-4 text-sm'>{submission.StudentCount}</td>
+                      <td className='px-4 py-4'>
+                        <div className='flex items-center gap-2'>
+                          <button
+                            onClick={() => handleViewDetails(submission.CourseID, submission.SubmittedBy)}
+                            className='flex items-center gap-1 px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium transition-colors'
+                            title='View Details'
+                          >
+                            <Eye size={16} />
+                            View
+                          </button>
+                          <button
+                            onClick={() => handleDownload(submission.CourseID, submission.SubmittedBy)}
+                            disabled={actionLoading}
+                            className='flex items-center gap-1 px-3 py-1.5 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                            title='Download Results'
+                          >
+                            <Download size={16} />
+                            Download
+                          </button>
+
+
+                          <button
+                            onClick={() => handleApproval('Approved',submission.CourseID, submission.SubmittedBy)}
+                            disabled={actionLoading}
+                            className='flex items-center gap-1 px-3 py-1.5 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                            title='Download Results'
+                          >
+                            <Eye size={16} />
+                            Approve
+                          </button>
+
+
+
+                          <button
+                            onClick={() => handleApproval('Rejected',submission.CourseID, submission.SubmittedBy)}
+                            disabled={actionLoading}
+                            className='flex items-center gap-1 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                            title='Download Results'
+                          >
+                            <X size={16} />
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -379,131 +305,116 @@ const ReviewExamResults = () => {
       </div>
 
       {/* View Details Modal */}
-      <Modal show={showViewModal} size="4xl" onClose={() => setShowViewModal(false)}>
-        <Modal.Header>Final Exam Result Details</Modal.Header>
-        <Modal.Body>
-          {selectedSubmission && (
-            <div className='space-y-4'>
+      <Modal show={showViewModal} size="5xl" dismissible onClose={() => setShowViewModal(false)}>
+        <ModalHeader>Exam Result Details</ModalHeader>
+        <ModalBody>
+          
+          {selectedSubmission && selectedSubmission.length > 0 && (
+
+          
+            <div className='space-y-3'>
+              
               {/* Course Information */}
-              <div className='grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg'>
+              <div className='grid grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200'>
                 <div>
                   <p className='text-sm text-gray-500'>Course</p>
-                  <p className='font-medium'>{selectedSubmission.courseCode} - {selectedSubmission.courseName}</p>
+                  <p className='font-semibold text-gray-900'>{selectedSubmission[0].CourseCode} - {selectedSubmission[0].CourseName}</p>
                 </div>
                 <div>
                   <p className='text-sm text-gray-500'>Lecturer</p>
-                  <p className='font-medium'>{selectedSubmission.lecturerName}</p>
+                  <p className='font-semibold text-gray-900'>{selectedSubmission[0].LecturerName}</p>
                 </div>
                 <div>
                   <p className='text-sm text-gray-500'>Level</p>
-                  <p className='font-medium'>{selectedSubmission.level}</p>
+                  <p className='font-semibold text-gray-900'>{selectedSubmission[0].LevelName}L</p>
                 </div>
                 <div>
-                  <p className='text-sm text-gray-500'>Session / Semester</p>
-                  <p className='font-medium'>{selectedSubmission.session} - {selectedSubmission.semester}</p>
+                  <p className='text-sm text-gray-500'>Avg Test Score</p>
+                  <p className='font-semibold text-gray-900'>{avgTest}</p>
                 </div>
+                <div>
+                  <p className='text-sm text-gray-500'>Avg Exam Score</p>
+                  <p className='font-semibold text-gray-900'>{avgExam}</p>
+                </div>
+                <div>
+                  <p className='text-sm text-gray-500'>Pass Count</p>
+                  <p className='font-semibold text-gray-900'>{passCount}</p>
+                </div>
+                <div>
+                  <p className='text-sm text-gray-500'>Fail Count</p>
+                  <p className='font-semibold text-gray-900'>{failCount}</p>
+                </div>
+
+
               </div>
 
-              {/* Score Statistics */}
-              <div className='grid grid-cols-5 gap-3'>
-                <div className='text-center p-3 bg-blue-50 rounded-lg'>
-                  <p className='text-sm text-blue-600'>Students</p>
-                  <p className='text-2xl font-bold text-blue-900'>{selectedSubmission.studentsCount}</p>
+              {/* Student Results Table */}
+              <div className='border border-gray-200 rounded-lg overflow-hidden'>
+                <div className='bg-gray-50 px-4 py-3 border-b border-gray-200'>
+                  <h3 className='font-semibold text-gray-900'>Student Results</h3>
+                  <p className='text-sm text-gray-500'>Individual student scores ({selectedSubmission.length} students)</p>
                 </div>
-                <div className='text-center p-3 bg-purple-50 rounded-lg'>
-                  <p className='text-sm text-purple-600'>Avg CA</p>
-                  <p className='text-2xl font-bold text-purple-900'>{selectedSubmission.caAverage}</p>
-                </div>
-                <div className='text-center p-3 bg-indigo-50 rounded-lg'>
-                  <p className='text-sm text-indigo-600'>Avg Exam</p>
-                  <p className='text-2xl font-bold text-indigo-900'>{selectedSubmission.examAverage}</p>
-                </div>
-                <div className='text-center p-3 bg-amber-50 rounded-lg'>
-                  <p className='text-sm text-amber-600'>Avg Total</p>
-                  <p className='text-2xl font-bold text-amber-900'>{selectedSubmission.totalAverage}</p>
-                </div>
-                <div className='text-center p-3 bg-green-50 rounded-lg'>
-                  <p className='text-sm text-green-600'>Pass Rate</p>
-                  <p className='text-2xl font-bold text-green-900'>{selectedSubmission.passRate}%</p>
-                </div>
-              </div>
 
-              {/* Grade Distribution */}
-              <div className='p-4 bg-gray-50 rounded-lg'>
-                <h3 className='font-semibold mb-3'>Grade Distribution</h3>
-                <div className='grid grid-cols-6 gap-3'>
-                  {Object.entries(selectedSubmission.gradeDistribution).map(([grade, count]) => {
-                    const gradeColors = {
-                      A: 'bg-green-100 text-green-700 border-green-300',
-                      B: 'bg-blue-100 text-blue-700 border-blue-300',
-                      C: 'bg-yellow-100 text-yellow-700 border-yellow-300',
-                      D: 'bg-orange-100 text-orange-700 border-orange-300',
-                      E: 'bg-red-100 text-red-700 border-red-300',
-                      F: 'bg-gray-100 text-gray-700 border-gray-300'
-                    };
-                    
-                    return (
-                      <div key={grade} className={`text-center p-3 rounded-lg border-2 ${gradeColors[grade]}`}>
-                        <p className='text-sm font-medium'>Grade {grade}</p>
-                        <p className='text-3xl font-bold'>{count}</p>
-                        <p className='text-xs mt-1'>
-                          {((count / selectedSubmission.studentsCount) * 100).toFixed(1)}%
-                        </p>
-                      </div>
-                    );
-                  })}
+                <div className='overflow-x-auto'>
+                  <table className='w-full'>
+                    <thead className='bg-gray-50 border-b border-gray-200'>
+                      <tr>
+                        <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>S/N</th>
+                        <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Matric No</th>
+                        <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Student Name</th>
+                        <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Level</th>
+                        <th className='px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider'>CA (30)</th>
+                        <th className='px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider'>Exam (70)</th>
+                        <th className='px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider'>Total (100)</th>
+                        <th className='px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider'>Grade</th>
+                        <th className='px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider'>Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody className='bg-white divide-y divide-gray-200'>
+                      {selectedSubmission.map((student, index) => (
+                        <tr key={index} className='hover:bg-gray-50'>
+                          <td className='px-4 py-3 text-sm text-gray-900'>{index + 1}</td>
+                          <td className='px-4 py-3 text-sm font-medium text-gray-900'>{student.MatricNo}</td>
+                          <td className='px-4 py-3 text-sm text-gray-900'>{student.StudentName}</td>
+                          <td className='px-4 py-3 text-sm text-gray-900'>{student.LevelName}L</td>
+                          <td className='px-4 py-3 text-center'>
+                            <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800'>
+                              {student.CA_Score}
+                            </span>
+                          </td>
+                          <td className='px-4 py-3 text-center'>
+                            <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-purple-100 text-purple-800'>
+                              {student.Exam_Score}
+                            </span>
+                          </td>
+                          <td className='px-4 py-3 text-center'>
+                            <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800'>
+                              {student.TotalScore}
+                            </span>
+                          </td>
+                          <td className='px-4 py-3 text-center'>
+                            <span className='text-sm font-semibold text-gray-900'>{student.Grade}</span>
+                          </td>
+                          <td className='px-4 py-3 text-center'>
+                            <span className={`text-sm font-medium ${student.Remarks === 'Pass' ? 'text-green-600' : 'text-red-600'}`}>
+                              {student.Remarks}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-
-              {/* File Information */}
-              <div className='p-4 bg-blue-50 border border-blue-200 rounded-lg'>
-                <div className='flex items-center justify-between'>
-                  <div className='flex items-center gap-3'>
-                    <FileSpreadsheet size={24} className='text-blue-600' />
-                    <div>
-                      <p className='font-medium text-blue-900'>{selectedSubmission.fileName}</p>
-                      <p className='text-sm text-blue-600'>
-                        Uploaded on {new Date(selectedSubmission.uploadedDate).toLocaleDateString()}
-                      </p>
-                      <div className='flex items-center gap-2 mt-1'>
-                        <span className='bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium border border-green-300'>
-                          CA Approved ✓
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <Button 
-                    text="Download" 
-                    icon={Download}
-                    onClick={() => downloadFile(selectedSubmission.fileName)}
-                    className='bg-blue-600 hover:bg-blue-700'
-                  />
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className='flex gap-3 pt-4 border-t'>
-                <Button 
-                  text="Approve Final Results"
-                  icon={CheckCircle}
-                  onClick={() => handleApprove(selectedSubmission.id)}
-                  disabled={actionLoading}
-                  className='bg-green-600 hover:bg-green-700 flex-1'
-                />
-                <Button 
-                  text="Reject Results"
-                  icon={XCircle}
-                  onClick={() => handleReject(selectedSubmission.id)}
-                  disabled={actionLoading}
-                  className='bg-red-600 hover:bg-red-700 flex-1'
-                />
               </div>
             </div>
           )}
-        </Modal.Body>
+        </ModalBody>
       </Modal>
     </div>
   )
 }
 
 export default ReviewExamResults
+            
+
+//   

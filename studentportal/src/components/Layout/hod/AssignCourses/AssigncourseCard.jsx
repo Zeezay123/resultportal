@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { Select, Spinner } from 'flowbite-react'
+import { Select, Spinner, TextInput } from 'flowbite-react'
 import { BookCheck, BookCopy, FileWarning, Users } from 'lucide-react'
 import { useSelector } from 'react-redux'
 
 const AssigncourseCard = ({ onFilterChange }) => {
-  const [selectedSession, setSelectedSession] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedSession, setSelectedSession] = useState('2');
+  const [selectedSemester, setSelectedSemester] = useState('1');
   const [selectedLevel, setSelectedLevel] = useState('');
   const [stats, setStats] = useState({
     totalCourses: 0,
@@ -22,11 +22,11 @@ const AssigncourseCard = ({ onFilterChange }) => {
   })
 
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const hodId = useSelector((state) => state.user.department);
 
   useEffect(() => {
-    fetchStatistics();
+    // fetchStatistics();
   }, [selectedSession, selectedSemester, selectedLevel]);
 
 useEffect(()=>{
@@ -54,12 +54,12 @@ try {
     lecturersRes.json()
   ]);
 
-  console.log(lecturersData)
-  console.log(coursesData)
+  console.log('ll',lecturersData)
+  console.log('ss',coursesData)
         setCardStat({
           total: coursesData.stats?.total,
           assigned: coursesData.stats?.assigned,
-          unassigned: coursesData.stats?.unassigned,
+          unassigned: coursesData.stats?.total - coursesData.stats?.assigned,
           lecturers: lecturersData.lecturers?.length
         });
 
@@ -80,44 +80,46 @@ try {
     }
   }, [selectedSession, selectedSemester, selectedLevel]);
 
-  const fetchStatistics = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedSession) params.append('sessionID', selectedSession);
-      if (selectedSemester) params.append('semesterID', selectedSemester);
-      if (selectedLevel) params.append('levelID', selectedLevel);
+  // const fetchStatistics = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const params = new URLSearchParams();
+  //     if (selectedSession) params.append('sessionID', selectedSession);
+  //     if (selectedSemester) params.append('semesterID', selectedSemester);
+  //     if (selectedLevel) params.append('levelID', selectedLevel);
 
-      // Fetch all courses
-      const coursesResponse = await fetch(`/api/hod/courses/getcourses/${hodId}?${params}`, {
-        credentials: 'include'
-      });
-      const coursesData = await coursesResponse.json();
+  //     // Fetch all courses
+  //     const coursesResponse = await fetch(`/api/hod/courses/getcourses/${hodId}?${params}`, {
+  //       credentials: 'include'
+  //     });
+  //     const coursesData = await coursesResponse.json();
 
-      // Fetch lecturers
-      const lecturersResponse = await fetch('/api/hod/lecturers/getlecturers', {
-        credentials: 'include'
-      });
-      const lecturersData = await lecturersResponse.json();
+  //     // Fetch lecturers
+  //     const lecturersResponse = await fetch('/api/hod/lecturers/getlecturers', {
+  //       credentials: 'include'
+  //     });
+  //     const lecturersData = await lecturersResponse.json();
 
-      if (coursesData.success && lecturersData.success) {
-        const totalCourses = coursesData.count;
-        const allocatedCourses = coursesData.courses.filter(c => c.AssignedLecturer).length;
-        const unallocatedCourses = totalCourses - allocatedCourses;
+  //     if (coursesData.success && lecturersData.success) {
+  //       const totalCourses = coursesData.count;
+  //       const allocatedCourses = coursesData.courses.filter(c => c.AssignedLecturer).length;
+  //       const unallocatedCourses = totalCourses - allocatedCourses;
 
-        setStats({
-          totalCourses,
-          unallocatedCourses,
-          allocatedCourses,
-          availableLecturers: lecturersData.count
-        });
-      }
-    } catch (err) {
-      console.error('Failed to fetch statistics:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  //       setStats({
+  //         totalCourses,
+  //         unallocatedCourses,
+  //         allocatedCourses,
+  //         availableLecturers: lecturersData.count
+  //       });
+  //     }
+  //   } catch (err) {
+  //     console.error('Failed to fetch statistics:', err);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+ 
+ 
   return (
     <div className='flex flex-col gap-4 mb-6 p-4 border border-gray-300 rounded-lg shadow-lg bg-white '>
         {/* header */}
@@ -133,21 +135,33 @@ try {
               {/* Session search input */}
           <div className='flex flex-col  gap-2'>
             <span className='text-black text-sm'> Session </span>
-            <Select className='w-40' value={selectedSession} onChange={(e) => setSelectedSession(e.target.value)}>
+            {/* <Select className='w-40' value={selectedSession} onChange={(e) => setSelectedSession(e.target.value)}>
               <option value=""> Select Session </option>
               <option value='1'> 24/25 </option>
               <option value='2'> 25/26 </option>
-            </Select>
+            </Select> */}
+
+            <TextInput
+            value={'25/26'}
+              readOnly
+              disabled
+            />
           </div>
 
               {/* semestersearch input */}
           <div className='flex flex-col  gap-2'>
             <span className='text-black text-sm'> Semester </span>
-            <Select className='w-40' value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)}>
+            {/* <Select className='w-40' value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)}>
               <option value=""> Select Semester </option>
               <option value='1'> First Semester </option>
               <option value='2'> Second Semester </option>
-            </Select>
+            </Select> */}
+
+            <TextInput
+            value={'First Semester'}
+              readOnly
+              disabled
+            />
           </div>
 
 

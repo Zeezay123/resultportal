@@ -14,8 +14,38 @@ export const getCourses = async (req, res, next) => {
             return next(errorHandler(500, "Database connection failed"));
         }
 
+        // Get the active session
+        const activeSessionResult = await pool.request()
+            .query(`
+                SELECT SessionID, SessionName 
+                FROM dbo.sessions 
+                WHERE isActive = 1
+            `);
+
+        if(activeSessionResult.recordset.length === 0){
+            return next(errorHandler(404, "No active session found"))
+        }
+
+        const sessionID = activeSessionResult.recordset[0].SessionID;
+
+        // Get active semester
+        const activeSemesterResult = await pool.request()
+            .query(`
+                SELECT SemesterID, SemesterName 
+                FROM dbo.semesters 
+                WHERE isActive = 'true'
+            `);
+
+        if(activeSemesterResult.recordset.length === 0){
+            return next(errorHandler(404, "No active semester found"))
+        }
+
+        const semesterID = activeSemesterResult.recordset[0].SemesterID;
+
         const result = await pool.request()
             .input('StaffCode', sql.VarChar, lectid)
+            .input('SessionID', sql.Int, sessionID)
+            .input('SemesterID', sql.Int, semesterID)
             .query(`
                 SELECT 
                     s.StaffID,
@@ -40,6 +70,8 @@ export const getCourses = async (req, res, next) => {
                 LEFT JOIN dbo.appdepartment d ON c.DepartmentID = d.DepartmentID
                 WHERE s.StaffCode = @StaffCode
                     AND ca.AssignmentStatus = 'assigned'
+                    AND ca.SessionID = @SessionID
+                    AND ca.SemesterID = @SemesterID
                 ORDER BY c.CourseCode
             `);
 

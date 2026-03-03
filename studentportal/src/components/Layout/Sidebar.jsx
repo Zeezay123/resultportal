@@ -17,7 +17,7 @@ const SidebarComp = () => {
 // const {expanded} = useContext(ExpandContext)
 
 const [expanded, setExpanded] = useState(false);
-const {role} = useSelector((state)=>state.user)
+const {role, currentUser, email} = useSelector((state)=>state.user)
 
 const sideBarData = getSidebarDataByRole(role);
 
@@ -40,7 +40,12 @@ color: "white",
 
 const logoItems = sideBarData.logoItems
 const mainItems = sideBarData.mainItems
-const bottomSide = sideBarData.bottomSide
+// Use actual user data from Redux instead of static data
+const bottomSide = {
+  image: sideBarData.bottomSide.image,
+  username: currentUser?.username || currentUser?.name || 'User',
+  email: email || currentUser?.email || 'user@delsu.edu.ng'
+}
 
 
 const handleTogle=(item)=>{

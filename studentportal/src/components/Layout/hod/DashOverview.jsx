@@ -21,44 +21,34 @@ fetchDashboardData();
   
 }, []);
 
-const fetchDashboardData = async () => {
-
+ const fetchDashboardData = async () => {
   try{
+    const [courseRes, studentsRes, lecturersCountRes] = await Promise.all([
+      fetch(`/api/hod/courses/stats/${hodId}`, { credentials: 'include' }),
+      fetch(`/api/hod/students/${hodId}`, { credentials: 'include' }),
+      fetch(`/api/hod/lecturers/count`, { credentials: 'include' })
+    ]);
 
- const [courseRes, studentsRes, lecturersRes] = await Promise.all([
-  fetch(`/api/hod/courses/stats/${hodId}`, { credentials: 'include' }),
-  fetch(`/api/hod/students/${hodId}`, { credentials: 'include' }), 
-  fetch(`/api/hod/lecturers/getlecturers`, { credentials: 'include' })
-]);
+    if(!courseRes.ok || !studentsRes.ok || !lecturersCountRes.ok){
+      return console.error("Failed to fetch one or more dashboard data");
+    }
 
+    const [coursesData, studentsData, lecturersCountData] = await Promise.all([
+      courseRes.json(), 
+      studentsRes.json(), 
+      lecturersCountRes.json()
+    ]);
 
-  if(!courseRes.ok || !studentsRes.ok || !lecturersRes.ok){
-   return console.error("Failed to fetch one or more dashboard data");
-  }
-
-  const [coursesData, studentsData, lecturersData] = await Promise.all([
-    courseRes.json(), 
-    studentsRes.json(), 
-    lecturersRes.json()
-  ]);
-
-
-console.log("Courses Data:", coursesData);
-console.log("Students Data:", studentsData);
-console.log("Lecturers Data:", lecturersData);
-
-  // Update dashboard stats with fetched data
-  setDashboardStats({
-    courses: coursesData.stats.total || coursesData.courses?.length || 0,
-    students: studentsData.students?.length || 0,
-    lecturers: lecturersData.lecturers?.length || 0,
-    results: 0 // No results fetch yet
-  });
-
+    // Update dashboard stats with fetched data
+    setDashboardStats({
+      courses: coursesData.stats?.total || coursesData.courses?.length || 0,
+      students: studentsData.students?.length || 0,
+      lecturers: lecturersCountData.count || 0,
+      results: 0 // No results fetch yet
+    });
   }catch(err){
     console.error("Error fetching dashboard data:", err);
   }
-
 }
 
 

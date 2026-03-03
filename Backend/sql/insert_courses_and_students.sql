@@ -1,3 +1,4 @@
+-- Active: 1770911680026@@172.168.30.60@1433@DPortal
 -- ============================================
 -- INSERT COURSES FOR FACULTIES AND DEPARTMENTS
 -- ============================================
@@ -746,3 +747,41 @@ WHERE s.[Status] = 'Active';
 -- INNER JOIN dbo.sessions ses ON cr.SessionID = ses.SessionID
 -- INNER JOIN dbo.semesters sem ON cr.SemesterID = sem.SemesterID
 -- ORDER BY s.MatricNo, c.CourseCode;
+
+
+
+ALTER TABLE dbo.results
+DROP CONSTRAINT FK_results_attendance
+   
+
+
+ALTER TABLE dbo.results
+DROP COLUMN AttendanceID
+
+INSERT INTO dbo.levels (LevelName) VALUES
+('700')
+
+
+SELECT name FROM sys.databases;
+
+SELECT TABLE_NAME 
+FROM INFORMATION_SCHEMA.TABLES 
+WHERE TABLE_TYPE = 'BASE TABLE';
+
+SELECT DB_NAME() AS CurrentDatabase;
+
+-- Check your permissions
+SELECT 
+    USER_NAME() as CurrentUser,
+    HAS_PERMS_BY_NAME(NULL, NULL, 'VIEW ANY DATABASE') as CanViewDatabases;
+
+-- Check database permissions
+USE DELSUPortal;
+SELECT * FROM fn_my_permissions(NULL, 'DATABASE');
+
+
+
+Insert INTO dbo.programmes 
+
+
+ALTER TABLE dbo.student ADD COLUMN Sex VARCHAR(1) NOT NULL CHECK (Sex IN ('M', 'F')) DEFAULT 'M';

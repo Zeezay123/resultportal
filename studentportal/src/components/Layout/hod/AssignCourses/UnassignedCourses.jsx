@@ -13,7 +13,7 @@ const UnassignedCourses = ({ selectedSession, selectedSemester, selectedLevel })
     const hodid = useSelector((state) => state.user.department);
      console.log("HOD ID in UnassignedCourses:", hodid);    
     useEffect(() => {
-        fetchUnassignedCourses();
+        // fetchUnassignedCourses();
     }, [selectedSession, selectedSemester, selectedLevel]);
 
     const fetchUnassignedCourses = async () => {

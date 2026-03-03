@@ -19,6 +19,8 @@ const SubmitResults = () => {
   const [dragActive, setDragActive] = useState(false)
   const fileInputRef = React.useRef(null)
   const lecturerId = useSelector((state) => state.user.id);
+  const [uploadSuccess, setUploadSuccess] = useState(null);
+
 
   useEffect(() => {
     fetchSessions();
@@ -115,11 +117,14 @@ const handleUpload = async () =>{
         body: selectedFile
        });
   const data = await response.json();
-       if(response.ok){
-        alert('File uploaded successfully');
-       } else {
+       if(!response.ok){
         alert('File upload failed: ' + (data.message || 'Unknown error'));
-       }
+        
+       } 
+        
+      console.log("File upload response:", data);
+
+      setUploadSuccess(data.success);
 
     }catch(error){
         console.error("File upload error:", error);
@@ -202,7 +207,7 @@ const formData = new FormData();
             <Label htmlFor="course"> Course</Label>
             <Select 
               id="course" 
-              className='w-40 mt-2'
+              className='w-50 mt-2'
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
             > 
@@ -284,7 +289,7 @@ const formData = new FormData();
 
 </div>
 
-<UploadedResultTable/>
+<UploadedResultTable uploadSuccess={uploadSuccess} selectedSemester={selectedSemester} selectedCourse={selectedCourse} selectedSession={selectedSession} />
     </div>
   )
 }

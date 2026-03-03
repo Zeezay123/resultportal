@@ -4,24 +4,59 @@ import ExcelJS from 'exceljs';
 
 // Generate Excel template with registered students
 export const downloadResultTemplate = async (req, res, next) => {
-    const { courseId, sessionId, semesterId } = req.query;
+    const { courseId } = req.query;
 
     try {
         const pool = await poolPromise;
+
+   //get the active session 
+         const activeSessionResult = await pool.request()
+         .query(`
+            SELECT  SessionID , SessionName 
+            FROM dbo.sessions 
+            WHERE isActive = 1
+         `);
+
+         if(activeSessionResult.recordset.length === 0){
+            return next(errorHandler(404, "No active session found"))
+         }
+  
+         const sessionID = activeSessionResult.recordset[0].SessionID;
+        
+
+
+         //get active semester
+         const activeSemesterResult = await pool.request()
+         .query(`
+            SELECT  SemesterID , SemesterName 
+            FROM dbo.semesters 
+            WHERE isActive = 'true'
+         `);
+
+        
+         if(activeSemesterResult.recordset.length === 0){
+            return next(errorHandler(404, "No active semester found"))
+         }
+
+         const semesterID = activeSemesterResult.recordset[0].SemesterID;
+         
+            if (!courseId) {
+            return next(errorHandler(400, "Course is required"));
+            }
 
         if (!pool) {
             return next(errorHandler(500, "Database connection failed"));
         }
 
-        if (!courseId || !sessionId || !semesterId) {
+        if (!courseId) {
             return next(errorHandler(400, "Course, Session, and Semester are required"));
         }
 
         // Get course details and registered students
         const result = await pool.request()
             .input('CourseID', sql.Int, courseId)
-            .input('SessionID', sql.Int, sessionId)
-            .input('SemesterID', sql.Int, semesterId)
+            .input('SessionID', sql.Int, sessionID)
+            .input('SemesterID', sql.Int, semesterID)
             .query(`
                 SELECT 
                     s.StudentID,
@@ -89,10 +124,11 @@ export const downloadResultTemplate = async (req, res, next) => {
         worksheet.insertRow(3, ['Session:', courseInfo.SessionName]);
         worksheet.insertRow(4, ['Semester:', courseInfo.SemesterName]);
         worksheet.insertRow(5, ['Credit Units:', courseInfo.CreditUnits]);
-        worksheet.insertRow(6, []); // Empty row
+        worksheet.insertRow(6, ['Department Name:', courseInfo.DepartmentName]);
+        worksheet.insertRow(7, []); // Empty row
 
         // Style course info rows
-        for (let i = 1; i <= 5; i++) {
+        for (let i = 1; i <= 6; i++) {
             worksheet.getRow(i).getCell(1).font = { bold: true };
             worksheet.getRow(i).getCell(2).font = { bold: true, color: { argb: 'FF1E3A8A' } };
         }
@@ -130,14 +166,7 @@ export const downloadResultTemplate = async (req, res, next) => {
                 };
             });
 
-            // Alternate row colors
-            if (index % 2 === 0) {
-                row.fill = {
-                    type: 'pattern',
-                    pattern: 'solid',
-                    fgColor: { argb: 'FFF3F4F6' }
-                };
-            }
+           
         });
 
         // Add data validation for test score (0-30)
@@ -219,10 +248,21 @@ export const uploadResults = async (req, res, next) => {
             return next(errorHandler(400, "No file uploaded"));
         }
 
-        const { courseId, sessionId, semesterId } = req.query;
+        const { courseId, ResultType } = req.query;
+        const lectid = req.params.id;
+        let ResultStatus = 'Test';
+        
 
-        if (!courseId || !sessionId || !semesterId) {
-            return next(errorHandler(400, "Course, Session, and Semester are required"));
+        if(ResultType !== 'Test'){
+       ResultStatus = 'Pending'
+        }
+
+        if (!lectid) {
+            return next(errorHandler(400, "Lecturer ID is required"));
+        }
+
+        if (!courseId) {
+            return next(errorHandler(400, "Course is required"));
         }
 
         const pool = await poolPromise;
@@ -231,14 +271,51 @@ export const uploadResults = async (req, res, next) => {
             return next(errorHandler(500, "Database connection failed"));
         }
 
+
+           //get the active session 
+         const activeSessionResult = await pool.request()
+         .query(`
+            SELECT  SessionID , SessionName 
+            FROM dbo.sessions 
+            WHERE isActive = 1
+         `);
+
+         if(activeSessionResult.recordset.length === 0){
+            return next(errorHandler(404, "No active session found"))
+         }
+  
+         const SessionID = activeSessionResult.recordset[0].SessionID;
+        
+
+
+         //get active semester
+         const activeSemesterResult = await pool.request()
+         .query(`
+            SELECT  SemesterID , SemesterName 
+            FROM dbo.semesters 
+            WHERE isActive = 'true'
+         `);
+
+        
+         if(activeSemesterResult.recordset.length === 0){
+            return next(errorHandler(404, "No active semester found"))
+         }
+
+         const SemesterID = activeSemesterResult.recordset[0].SemesterID;
+         
+
+
         // Read uploaded Excel file
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(req.file.buffer);
         const worksheet = workbook.worksheets[0];
 
         // Extract course info from the file (rows 1-5)
-        const fileSessionName = worksheet.getRow(3).getCell(2).value;
-        const fileSemesterName = worksheet.getRow(4).getCell(2).value;
+        const sessionCell = worksheet.getRow(3).getCell(2).value;
+        const semesterCell = worksheet.getRow(4).getCell(2).value;
+        const units = worksheet.getRow(5).getCell(2).value;
+        
+ 
 
         const results = [];
         const errors = [];
@@ -250,41 +327,34 @@ export const uploadResults = async (req, res, next) => {
             if (rowNumber <= 7) return; // Skip header rows
 
             const matricNo = row.getCell(2).value;
-            const testScore = row.getCell(5).value;
-            const examScore = row.getCell(6).value;
-            const totalScore = row.getCell(7).value;
-            const grade = row.getCell(8).value;
+            const testScore = row.getCell(4).value;
+            const examScore = row.getCell(5).value;
+            
+            // Cell 6 has a formula, get the calculated result or compute it
+            const totalScoreCell = row.getCell(6);
+            const totalScore = totalScoreCell.result !== undefined ? totalScoreCell.result : 
+                               ((testScore || 0) + (examScore || 0));
+            
+            // const grade = row.getCell(7).value;
 
             // Skip empty rows
             if (!matricNo) return;
 
-            // Validate scores
-            if (testScore !== null && testScore !== '' && (testScore < 0 || testScore > 30)) {
-                errors.push({ row: rowNumber, matricNo, error: 'Test score must be between 0 and 30' });
-                errorCount++;
-                return;
-            }
-
-            if (examScore !== null && examScore !== '' && (examScore < 0 || examScore > 70)) {
-                errors.push({ row: rowNumber, matricNo, error: 'Exam score must be between 0 and 70' });
-                errorCount++;
-                return;
-            }
-
-            // Only process if scores are provided
-            if (testScore !== null && testScore !== '' && examScore !== null && examScore !== '') {
+           
+            
+          
                 results.push({
                     matricNo,
                     testScore: parseFloat(testScore) || 0,
                     examScore: parseFloat(examScore) || 0,
                     totalScore: parseFloat(totalScore) || 0,
-                    grade: grade || ''
+                    // grade: grade || null
                 });
-            }
+            
         });
 
         if (results.length === 0) {
-            return next(errorHandler(400, "No valid results found in the uploaded file"));
+            return next(errorHandler(400, "No valid results found in the uploaded file. Please ensure at least one student has test or exam scores entered."));
         }
 
         // Begin transaction
@@ -296,7 +366,7 @@ export const uploadResults = async (req, res, next) => {
                 // Get StudentID from MatricNo
                 const studentResult = await transaction.request()
                     .input('MatricNo', sql.VarChar, result.matricNo)
-                    .query('SELECT StudentID FROM dbo.student WHERE MatricNo = @MatricNo');
+                    .query('SELECT MatricNo FROM dbo.student WHERE MatricNo = @MatricNo');
 
                 if (studentResult.recordset.length === 0) {
                     errors.push({ matricNo: result.matricNo, error: 'Student not found' });
@@ -304,55 +374,115 @@ export const uploadResults = async (req, res, next) => {
                     continue;
                 }
 
-                const studentId = studentResult.recordset[0].StudentID;
+                const UploadSession = await transaction.request()
+                .input('SessionName', sql.VarChar, sessionCell)
+                .query(`
+                    SELECT SessionID FROM dbo.sessions WHERE SessionName = @SessionName
+                `);
+                
+                const UploadSemester = await transaction.request()
+                .input('SemesterName', sql.VarChar, semesterCell)
+                .query(`
+                    SELECT SemesterID FROM dbo.semesters WHERE SemesterName = @SemesterName
+                `);
+
+                const MatricNo = studentResult.recordset[0].MatricNo;
+                const sessId = UploadSession.recordset[0].SessionID;
+                const semId = UploadSemester.recordset[0].SemesterID;
+
 
                 // Check if result already exists
                 const existingResult = await transaction.request()
-                    .input('StudentID', sql.Int, studentId)
+                    .input('MatricNo', sql.VarChar, MatricNo)
                     .input('CourseID', sql.Int, courseId)
-                    .input('SessionID', sql.Int, sessionId)
-                    .input('SemesterID', sql.Int, semesterId)
+                    .input('SessionID', sql.Int, sessId)
+                    .input('SemesterID', sql.Int, semId)
+                    .input('SubmittedBy', sql.VarChar, lectid)
                     .query(`
-                        SELECT ResultID FROM dbo.results 
-                        WHERE StudentID = @StudentID 
+                        SELECT ResultID, ResultStatus, ResultType FROM dbo.results 
+                        WHERE MatricNo = @MatricNo 
                             AND CourseID = @CourseID 
                             AND SessionID = @SessionID 
                             AND SemesterID = @SemesterID
+                            AND SubmittedBy = @SubmittedBy
                     `);
 
                 if (existingResult.recordset.length > 0) {
                     // Update existing result
-                    await transaction.request()
+
+                if(existingResult.recordset[0].ResultType === 'Exam' && (existingResult.recordset[0].ResultStatus === 'Submitted' || existingResult.recordset[0].ResultStatus === 'Approved')){
+                    return next(errorHandler(400, `Result for student ${MatricNo} cannot be edited. Contact HOD to unsubmit the results.`));
+                 
+                }
+
+
+                   
+
+                    let query = '';
+
+                    if(ResultType === 'Test'){
+                        query = `
+                            UPDATE dbo.results 
+                            SET CA_Score = @TestScore,
+                                ResultType = @ResultType,
+                                SubmittedDate = GETDATE(),
+                                SubmittedBy = @lectid
+                            WHERE ResultID = @ResultID
+                        `;
+                    }
+
+                    else {
+                        query = `
+                        UPDATE dbo.results
+                        SET Exam_Score = @ExamScore,
+                            ResultType = @ResultType,
+                            SubmittedDate = GETDATE(),
+                            SubmittedBy = @lectid
+                        WHERE ResultID = @ResultID
+                        `;
+                    }
+
+                     await transaction.request()
                         .input('ResultID', sql.Int, existingResult.recordset[0].ResultID)
                         .input('TestScore', sql.Decimal(5, 2), result.testScore)
                         .input('ExamScore', sql.Decimal(5, 2), result.examScore)
-                        .input('TotalScore', sql.Decimal(5, 2), result.totalScore)
-                        .input('Grade', sql.VarChar, result.grade)
-                        .query(`
-                            UPDATE dbo.results 
-                            SET TestScore = @TestScore,
-                                ExamScore = @ExamScore,
-                                TotalScore = @TotalScore,
-                                Grade = @Grade,
-                                DateModified = GETDATE()
-                            WHERE ResultID = @ResultID
-                        `);
+                        .input('ResultType', sql.VarChar, ResultType)
+                        .input('lectid', sql.VarChar, lectid)
+
+                        // .input('TotalScore', sql.Decimal(5, 2), result.totalScore)
+                        // .input('Grade', sql.VarChar, result.grade)
+                        .query(query)
+            
                 } else {
+
+                    const idandlevel = await transaction.request()
+                    .input('MatricNO', sql.VarChar, MatricNo)
+                    .query(`
+                    SELECT StudentID, LevelID FROM dbo.student WHERE MatricNo = @MatricNO
+                    `);
+                    const studentId = idandlevel.recordset[0].StudentID;
+                    const levelId = idandlevel.recordset[0].LevelID;
                     // Insert new result
                     await transaction.request()
-                        .input('StudentID', sql.Int, studentId)
+                        .input('MatricNo', sql.VarChar, MatricNo)
                         .input('CourseID', sql.Int, courseId)
-                        .input('SessionID', sql.Int, sessionId)
-                        .input('SemesterID', sql.Int, semesterId)
+                        .input('SessionID', sql.Int, sessId)
+                        .input('SemesterID', sql.Int, semId)
                         .input('TestScore', sql.Decimal(5, 2), result.testScore)
                         .input('ExamScore', sql.Decimal(5, 2), result.examScore)
-                        .input('TotalScore', sql.Decimal(5, 2), result.totalScore)
-                        .input('Grade', sql.VarChar, result.grade)
+                        .input('CreditUnits', sql.Int, units)
+                        .input('ResultStatus', sql.VarChar, ResultStatus)
+                        // .input('TotalScore', sql.Decimal(5, 2), result.totalScore)
+                        // .input('Grade', sql.VarChar, result.grade)
+                        .input('StudentID', sql.Int, studentId)
+                        .input('LevelID', sql.Int, levelId)
+                        .input('ResultType', sql.VarChar, ResultType)
+                        .input('lectid', sql.VarChar, lectid)
                         .query(`
                             INSERT INTO dbo.results 
-                            (StudentID, CourseID, SessionID, SemesterID, TestScore, ExamScore, TotalScore, Grade, DateCreated)
+                            (MatricNo, CourseID, SessionID, SemesterID, CA_Score, Exam_Score, CreditUnits, StudentID, LevelID, ResultType,ResultStatus, SubmittedDate, SubmittedBy)
                             VALUES 
-                            (@StudentID, @CourseID, @SessionID, @SemesterID, @TestScore, @ExamScore, @TotalScore, @Grade, GETDATE())
+                            (@MatricNo, @CourseID, @SessionID, @SemesterID, @TestScore, @ExamScore, @CreditUnits, @StudentID, @LevelID, @ResultType, @ResultStatus, GETDATE(), @lectid)
                         `);
                 }
 
@@ -382,3 +512,330 @@ export const uploadResults = async (req, res, next) => {
         return next(errorHandler(500, "Error uploading results: " + error.message));
     }
 };
+
+
+export const getUploadedResults = async (req, res, next) => {
+    const lectid = req.params.lectid;
+    const { courseID, search } = req.query;
+
+if (!lectid) {
+    return next(errorHandler(403, "Lecturer ID is required"))
+}
+
+if(!courseID ){
+    return next(errorHandler(400, "Course is required"));
+}
+
+try {
+
+    const pool = await poolPromise;
+
+    if (!pool) {
+        return next(errorHandler(500, "Database connection failed"));
+    }
+
+
+    
+           //get the active session 
+         const activeSessionResult = await pool.request()
+         .query(`
+            SELECT  SessionID , SessionName 
+            FROM dbo.sessions 
+            WHERE isActive = 1
+         `);
+
+         if(activeSessionResult.recordset.length === 0){
+            return next(errorHandler(404, "No active session found"))
+         }
+  
+         const SessionID = activeSessionResult.recordset[0].SessionID;
+        
+
+
+         //get active semester
+         const activeSemesterResult = await pool.request()
+         .query(`
+            SELECT  SemesterID , SemesterName 
+            FROM dbo.semesters 
+            WHERE isActive = 'true'
+         `);
+
+        
+         if(activeSemesterResult.recordset.length === 0){
+            return next(errorHandler(404, "No active semester found"))
+         }
+
+         const SemesterID = activeSemesterResult.recordset[0].SemesterID;
+    
+   let query = `
+   SELECT 
+   r.MatricNo,
+   CONCAT(s.LastName, ' ', s.OtherNames) AS Name,
+   l.levelName,
+   r.CA_Score,
+   r.Exam_Score,
+   r.TotalScore,
+   r.Grade,
+   r.Remarks,
+   r.ResultType
+
+    FROM dbo.results r
+    LEFT JOIN dbo.student s ON r.MatricNo = s.MatricNo
+    LEFT JOIN dbo.levels l ON s.LevelID = l.LevelID
+
+    WHERE r.CourseID = @CourseID
+      AND r.SessionID = @SessionID
+      AND r.SemesterID = @SemesterID
+      AND r.SubmittedBy = @lectid
+   `
+
+   if(search){
+    query += ` AND (r.MatricNo LIKE '%' + @Search + '%' OR CONCAT(s.LastName, ' ', s.OtherNames) LIKE '%' + @Search + '%')`
+   }
+
+    const request = pool.request()
+    .input('CourseID', sql.Int, parseInt(courseID))
+    .input('SessionID', sql.Int, parseInt(SessionID))
+    .input('SemesterID', sql.Int, parseInt(SemesterID))
+    .input('lectid', sql.VarChar, lectid)
+    if(search){
+        request.input('Search', sql.VarChar, search);
+    }
+
+    const results = await request.query(query);
+
+    res.status(200).json({
+        success: true,
+        data: results.recordset
+    });
+
+} catch (error) {
+    return next(errorHandler(500, "Error fetching uploaded results: " + error.message));
+}
+
+}
+
+
+export const updateScoreById = async(req, res, next) => {
+    const lectid = req.params.lectid;
+    const { MatricNo, CA_Score, Exam_Score, SessionID, SemesterID, CourseID } = req.body;
+
+    if(!lectid){
+        return next(errorHandler(403, "Lecturer ID and Matric Number are required"));
+    }
+    
+    try {
+        
+        const pool = await poolPromise;
+        if(!pool){
+            return next(errorHandler(500, "Database connection failed"));
+        }
+       
+        const checkType = await pool.request()
+        .input('MatricNo', sql.VarChar, MatricNo)
+        .input('CourseID', sql.Int, parseInt(CourseID))
+        .input('SessionID', sql.Int, parseInt(SessionID))
+        .input('SemesterID', sql.Int, parseInt(SemesterID))
+        .query(`SELECT ResultType, ResultStatus FROM dbo.results 
+            WHERE MatricNo = @MatricNo 
+                AND CourseID = @CourseID
+                AND SessionID = @SessionID
+                AND SemesterID = @SemesterID
+                AND SubmittedBy = @lectid
+        `);
+
+        if(checkType.recordset[0].ResultType === 'Exam'  && (checkType.recordset[0].ResultStatus === 'Submitted' || checkType.recordset[0].ResultStatus === 'Approved')){
+           
+            return next(errorHandler(400, `Result for student ${MatricNo} cannot be edited. Contact HOD to unsubmit the results.`));
+       
+        }
+        const query = `
+        UPDATE dbo.results
+        SET CA_Score = @CA_Score,
+            Exam_Score = @Exam_Score
+        WHERE MatricNo = @MatricNo
+            AND SessionID = @SessionID
+            AND SemesterID = @SemesterID
+            AND CourseID = @CourseID
+            AND SubmittedBy = @lectid
+        `;
+
+     const result = await pool.request()
+        .input('CA_Score', sql.Decimal(5,2), parseFloat(CA_Score))
+        .input('Exam_Score', sql.Decimal(5,2), parseFloat(Exam_Score))
+        .input('MatricNo', sql.VarChar, MatricNo)
+        .input('SessionID', sql.Int, parseInt(SessionID))
+        .input('SemesterID', sql.Int, parseInt(SemesterID))
+        .input('CourseID', sql.Int, parseInt(CourseID))
+        .input('lectid', sql.VarChar, lectid)
+        .query(query);
+
+        if(result.rowsAffected[0] === 0){
+            return next(errorHandler(404, "Result not found "));
+        }
+
+      return  res.status(200).json({
+            success: true,
+            message: "Result updated successfully"
+        });
+
+    } catch (error) {
+        return next(errorHandler(500, "Error updating result: " + error.message));
+    }
+
+}
+
+
+export const submitResultsToHOD = async(req, res, next) => {
+    const lectid = req.params.lectid;
+    const { courseID} = req.body;
+    const ResultType = req.query.ResultType
+
+
+    console.log('this is the resultType:',ResultType)
+    if(!lectid){
+        return next(errorHandler(403, "Lecturer ID is required"));
+    }
+
+    if(!courseID){
+        console.log(courseID);
+        return next(errorHandler(400, "Course, Session, and Semester are required"));
+    }
+    
+    if(!ResultType){
+        return next(errorHandler(400, "ResultType query parameter is required and must be either 'Test' or 'Exam'"));
+    }
+    try {
+   
+        const pool = await poolPromise;
+
+           //get the active session 
+         const activeSessionResult = await pool.request()
+         .query(`
+            SELECT  SessionID , SessionName 
+            FROM dbo.sessions 
+            WHERE isActive = 1
+         `);
+
+         if(activeSessionResult.recordset.length === 0){
+            return next(errorHandler(404, "No active session found"))
+         }
+  
+         const SessionID = activeSessionResult.recordset[0].SessionID;
+        
+
+
+         //get active semester
+         const activeSemesterResult = await pool.request()
+         .query(`
+            SELECT  SemesterID , SemesterName 
+            FROM dbo.semesters 
+            WHERE isActive = 'true'
+         `);
+
+        
+         if(activeSemesterResult.recordset.length === 0){
+            return next(errorHandler(404, "No active semester found"))
+         }
+
+         const SemesterID = activeSemesterResult.recordset[0].SemesterID;
+
+        if(!pool){
+            return next(errorHandler(500, "Database connection failed"));
+        }
+
+        // Verify lecturer is assigned to this course
+        const assignmentCheck = await pool.request()
+            .input('lectid', sql.VarChar, lectid)
+            .input('CourseID', sql.Int, parseInt(courseID))
+            .input('SessionID', sql.Int, parseInt(SessionID))
+            .input('SemesterID', sql.Int, parseInt(SemesterID))
+            .query(`
+                SELECT 
+                ca.AssignmentID,
+                s.StaffCode 
+
+                FROM dbo.course_assignment ca
+                
+                INNER JOIN dbo.staff s ON ca.LecturerID = s.StaffID
+                
+                WHERE s.StaffCode = @lectid 
+                    AND CourseID = @CourseID 
+                    AND SessionID = @SessionID 
+                    AND SemesterID = @SemesterID
+            `);
+ 
+        if (assignmentCheck.recordset.length === 0) {
+            return next(errorHandler(403,  `${lectid}You are not assigned to this course for the selected session/semester`));
+        }
+
+   
+        let query= ''
+
+
+    if(ResultType === 'Test'){
+
+
+            query = `
+                UPDATE dbo.results
+                SET SubmittedDate = GETDATE(),
+                    ResultStatus = 'Pending',
+                    SubmittedBy = @lectid
+                WHERE CourseID = @CourseID
+                    AND SessionID = @SessionID
+                    AND SemesterID = @SemesterID
+                    AND ResultType = 'Test'
+            `;
+    }
+
+    else {
+   
+            query =    `
+                UPDATE dbo.results
+                SET SubmittedDate = GETDATE(),
+                    ResultStatus = 'Submitted',
+                    SubmittedBy = @lectid
+                WHERE CourseID = @CourseID
+                    AND SessionID = @SessionID
+                    AND SemesterID = @SemesterID
+                    AND (
+                        ResultType = 'Test'
+                        OR ResultStatus IS NULL
+                        OR (ResultType = 'Exam' AND ResultStatus NOT IN ('Submitted', 'Approved'))
+                    )
+            `;
+            }
+
+
+
+ const result = await pool.request()
+
+        
+            .input('CourseID', sql.Int, parseInt(courseID))
+            .input('SessionID', sql.Int, parseInt(SessionID))
+            .input('SemesterID', sql.Int, parseInt(SemesterID))
+            .input('lectid', sql.VarChar, lectid)
+            .query(query);
+
+
+
+
+            if(result.rowsAffected[0] === 0){
+                return next(errorHandler(404, "No results found to submit or results have already been submitted/approved"));
+            }
+
+        res.status(200).json({
+            success: true,
+            message: "Results submitted to HOD successfully"
+        });
+
+    } catch (error) {
+        return next(errorHandler(500, "Error submitting results: " + error.message));
+    }
+
+}
+
+
+export const editResults = async (req, res, next) => {
+
+}

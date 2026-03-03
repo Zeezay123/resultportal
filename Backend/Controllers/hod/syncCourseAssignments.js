@@ -12,12 +12,20 @@ export const syncCourseAssignments = async () => {
         // Insert missing course assignments (courses without assignment entries)
         // Creates entries only for active session - historical data comes from result table
         const query = `
-            INSERT INTO dbo.course_assignment (CourseID, AssignmentStatus, AssignedDate, SessionID)
+            INSERT INTO dbo.course_assignment (CourseID,CourseCode, SemesterID ,AssignmentStatus,ProgrammeID, CourseType, CourseCategory, LevelID, AssignedDate, SessionID,FacultyID, DepartmentID)
             SELECT 
                 c.CourseID,
+                c.CourseCode,
+                c.SemesterID,
                 'unassigned' as AssignmentStatus,
+                c.ProgrammeID,
+                c.CourseType,
+                c.CourseCategory,
+                c.LevelID,
                 NULL as AssignedDate, 
-                s.SessionID
+                s.SessionID, 
+                c.FacultyID,
+                c.DepartmentID
             FROM dbo.course c
             CROSS JOIN dbo.sessions s
             LEFT JOIN dbo.course_assignment ca 
@@ -25,6 +33,8 @@ export const syncCourseAssignments = async () => {
                 AND s.SessionID = ca.SessionID
             WHERE ca.CourseID IS NULL
                 AND s.isActive = 1
+
+            ORDER BY c.CourseCode   
         `;
 
         const result = await pool.request().query(query);

@@ -2,6 +2,7 @@ import React from 'react'
 import UnassignedCourses from '../../components/Layout/hod/AssignCourses/UnassignedCourses'
 import AssignToLecture from '../../components/Layout/hod/AssignCourses/AssignToLecture'
 import AssigncourseCard from '../../components/Layout/hod/AssignCourses/AssigncourseCard'
+import AssignedTable from '../../components/Layout/hod/AssignCourses/AssignedTable'
 
 const AssignToLecturer = () => {
 const [selectedSession, setSelectedSession] = React.useState('')  
@@ -30,21 +31,16 @@ const handleAssignmentSuccess = () => {
     <AssigncourseCard onFilterChange={handleFilterChange} key={refreshKey} />
 
        <div className='flex gap-2'> 
-        <UnassignedCourses 
-          selectedSession={selectedSession}
-          selectedSemester={selectedSemester}
-          selectedLevel={selectedLevel}
-          key={`unassigned-${refreshKey}`}
-        />
+      
         <AssignToLecture 
-          selectedSession={selectedSession}
-          selectedSemester={selectedSemester}
-          selectedLevel={selectedLevel}
+        
           onAssignmentSuccess={handleAssignmentSuccess}
           key={`lecturers-${refreshKey}`}
         />
         
         </div> 
+
+        <AssignedTable refreshKey={refreshKey}  onAssignmentSuccess={handleAssignmentSuccess} />
     </div>
   )
 }

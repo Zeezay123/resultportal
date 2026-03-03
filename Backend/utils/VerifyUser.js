@@ -21,6 +21,7 @@ export const  VerifyUser =(req, res, next)=>{
         }
 
         req.user = user
+        
 
         next()
     })

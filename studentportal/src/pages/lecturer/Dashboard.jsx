@@ -13,8 +13,9 @@ const Dashboard = () => {
 <p className='text-sm text-slate-500'>Overview of students and courses</p>
     </div>  
 
-     <DashboardCard/>
-      
+    <DashboardCard/>
+    
+ 
      
     <DashboardTable />  
     

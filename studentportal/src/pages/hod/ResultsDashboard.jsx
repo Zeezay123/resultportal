@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Select, TextInput, Spinner, Badge, Modal, ModalHeader, ModalBody, ModalFooter } from 'flowbite-react'
 import { FileCheck, FileX, ClockAlert, CheckCircle, Search, Filter, Eye, UserCheck, XCircle } from 'lucide-react'
 import Button from '../../components/ui/Button'
+import { useSelector } from 'react-redux'
 
 const ResultsDashboard = () => {
   const [stats, setStats] = useState({
@@ -22,142 +23,149 @@ const ResultsDashboard = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedResult, setSelectedResult] = useState(null);
 
+  const hodId = useSelector((state) => state.user.department);
+
   // Fetch results data
   useEffect(() => {
-    fetchResults();
-  }, [selectedSession, selectedSemester, selectedLevel, statusFilter]);
+    fetchExamResults();
+  }, [selectedSemester, selectedLevel, searchTerm]);
 
-  // Filter results based on search
+  // Calculate stats when results change
   useEffect(() => {
-    if (searchTerm) {
-      const filtered = results.filter(result => 
-        result.courseCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        result.courseName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        result.lecturerName?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredResults(filtered);
-    } else {
-      setFilteredResults(results);
+    if (results.length > 0) {
+      const pending = results.filter(r => r.ResultStatus === 'Submitted').length;
+      const approved = results.filter(r => r.ResultStatus === 'Approved').length;
+      const rejected = results.filter(r => r.ResultStatus === 'Rejected').length;
+      
+      setStats({
+        totalSubmissions: results.length,
+        pendingApproval: pending,
+        approved: approved,
+        rejected: rejected
+      });
     }
-  }, [searchTerm, results]);
+  }, [results]);
 
-  const fetchResults = async () => {
+  // Filter results based on status
+  useEffect(() => {
+    if (statusFilter === 'all') {
+      setFilteredResults(results);
+    } else {
+      const statusMap = {
+        'Pending': 'Submitted',
+        'Approved': 'Approved',
+        'Rejected': 'Rejected'
+      };
+      setFilteredResults(results.filter(r => r.ResultStatus === statusMap[statusFilter]));
+    }
+  }, [statusFilter, results]);
+
+  const fetchExamResults = async () => {
     try {
       setLoading(true);
-      // Mock data - replace with actual API call
-      const mockResults = [
-        {
-          id: 1,
-          courseCode: 'CSC101',
-          courseName: 'Introduction to Computer Science',
-          level: '100L',
-          semester: 'First',
-          session: '2024/2025',
-          lecturerName: 'Dr. Grace Eze',
-          studentsCount: 45,
-          submittedDate: '2024-12-15',
-          status: 'Pending'
-        },
-        {
-          id: 2,
-          courseCode: 'CSC201',
-          courseName: 'Computer Programming I',
-          level: '200L',
-          semester: 'First',
-          session: '2024/2025',
-          lecturerName: 'Mr. Peter Oluwole',
-          studentsCount: 38,
-          submittedDate: '2024-12-14',
-          status: 'Approved'
-        },
-        {
-          id: 3,
-          courseCode: 'MTH101',
-          courseName: 'General Mathematics I',
-          level: '100L',
-          semester: 'First',
-          session: '2024/2025',
-          lecturerName: 'Dr. Mary Nwosu',
-          studentsCount: 52,
-          submittedDate: '2024-12-10',
-          status: 'Pending'
-        },
-        {
-          id: 4,
-          courseCode: 'CSC301',
-          courseName: 'Database Management Systems',
-          level: '300L',
-          semester: 'First',
-          session: '2024/2025',
-          lecturerName: 'Prof. James Akinola',
-          studentsCount: 30,
-          submittedDate: '2024-12-08',
-          status: 'Rejected'
-        }
-      ];
+      const params = new URLSearchParams();
+      if (selectedSemester) params.append('semesterID', selectedSemester);
+      if (selectedLevel) params.append('levelID', selectedLevel);
+      if (searchTerm) params.append('search', searchTerm);
 
-      setResults(mockResults);
-      
-      // Calculate stats
-      const stats = {
-        totalSubmissions: mockResults.length,
-        pendingApproval: mockResults.filter(r => r.status === 'Pending').length,
-        approved: mockResults.filter(r => r.status === 'Approved').length,
-        rejected: mockResults.filter(r => r.status === 'Rejected').length
-      };
-      setStats(stats);
-      
-    } catch (err) {
-      console.error('Failed to fetch results:', err);
+      const res = await fetch(`/api/hod/results/allExamResults/${hodId}?${params.toString()}`, {
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        console.error("Failed to fetch exam results", res.statusText);
+        return;
+      }
+
+      const data = await res.json();
+      setResults(data.results);
+      console.log(data);
+
+    } catch (error) {
+      console.error("fetchExamResults error:", error);
     } finally {
       setLoading(false);
     }
-  };
-
+  }
+  
   const handleViewResult = (result) => {
     setSelectedResult(result);
     setViewModalOpen(true);
   };
 
-  const handleApprove = async (resultId) => {
-    if (!confirm('Are you sure you want to approve this result?')) return;
+  const handleApprove = async (result) => {
+    if (!confirm(`Approve exam results for ${result.CourseCode}?`)) return;
     
     try {
-      // API call to approve result
-      alert('Result approved successfully!');
-      fetchResults();
-    } catch (err) {
-      alert('Failed to approve result: ' + err.message);
+      const res = await fetch(`/api/hod/results/approveOrReject/${hodId}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseID: result.CourseID,
+          staffCode: result.SubmittedBy,
+          status: 'Approved'
+        })
+      });
+
+      if (res.ok) {
+        alert('Results approved successfully');
+        fetchExamResults();
+      } else {
+        alert('Failed to approve results');
+      }
+    } catch (error) {
+      console.error('Error approving:', error);
+      alert('Error approving results');
     }
   };
 
-  const handleReject = async (resultId) => {
-    const reason = prompt('Please provide a reason for rejection:');
+  const handleReject = async (result) => {
+    const reason = prompt('Reason for rejection:');
     if (!reason) return;
-    
+
     try {
-      // API call to reject result
-      alert('Result rejected successfully!');
-      fetchResults();
-    } catch (err) {
-      alert('Failed to reject result: ' + err.message);
+      const res = await fetch(`/api/hod/results/approveOrReject/${hodId}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseID: result.CourseID,
+          staffCode: result.SubmittedBy,
+          status: 'Rejected'
+        })
+      });
+
+      if (res.ok) {
+        alert('Results rejected');
+        fetchExamResults();
+      } else {
+        alert('Failed to reject results');
+      }
+    } catch (error) {
+      console.error('Error rejecting:', error);
+      alert('Error rejecting results');
     }
   };
+  
 
   const getStatusBadge = (status) => {
+    // Map database status to display status
+    const displayStatus = status === 'Submitted' ? 'Pending' : status;
+    
     const statusConfig = {
       'Pending': { color: 'bg-yellow-100 text-yellow-700 border-yellow-300', icon: ClockAlert },
       'Approved': { color: 'bg-green-100 text-green-700 border-green-300', icon: CheckCircle },
       'Rejected': { color: 'bg-red-100 text-red-700 border-red-300', icon: XCircle }
     };
     
-    const config = statusConfig[status] || statusConfig['Pending'];
+    const config = statusConfig[displayStatus] || statusConfig['Pending'];
     const Icon = config.icon;
     
     return (
       <span className={`${config.color} px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit border`}>
         <Icon size={14} />
-        {status}
+        {displayStatus}
       </span>
     );
   };
@@ -166,8 +174,8 @@ const ResultsDashboard = () => {
     <div className='flex flex-col gap-4 p-4'>
       {/* Header */}
       <div className='flex flex-col gap-2 mb-4'>
-        <h1 className='text-2xl font-bold text-white'>Results Management</h1>
-        <p className='text-sm text-slate-300'>Review and approve submitted course results</p>
+        <h1 className='text-2xl font-bold text-black'>Results Management</h1>
+        <p className='text-sm text-slate-800'>Review and approve submitted course results</p>
       </div>
 
       {/* Statistics Cards */}
@@ -315,25 +323,23 @@ const ResultsDashboard = () => {
                   <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Level</th>
                   <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Lecturer</th>
                   <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Students</th>
-                  <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Submitted</th>
                   <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Status</th>
                   <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>Actions</th>
                 </tr>
               </thead>
               <tbody className='bg-white divide-y divide-gray-200'>
-                {filteredResults.map((result) => (
-                  <tr key={result.id} className='hover:bg-gray-50 transition-colors'>
+                {filteredResults.map((result, index) => (
+                  <tr key={index} className='hover:bg-gray-50 transition-colors'>
                     <td className='px-4 py-4'>
                       <div className='flex flex-col'>
-                        <span className='font-medium text-gray-900'>{result.courseCode}</span>
-                        <span className='text-sm text-gray-500'>{result.courseName}</span>
+                        <span className='font-medium text-gray-900'>{result.CourseCode}</span>
+                        <span className='text-sm text-gray-500'>{result.CourseName}</span>
                       </div>
                     </td>
-                    <td className='px-4 py-4 text-sm text-gray-900'>{result.level}</td>
-                    <td className='px-4 py-4 text-sm text-gray-900'>{result.lecturerName}</td>
-                    <td className='px-4 py-4 text-sm text-gray-900'>{result.studentsCount}</td>
-                    <td className='px-4 py-4 text-sm text-gray-500'>{new Date(result.submittedDate).toLocaleDateString()}</td>
-                    <td className='px-4 py-4'>{getStatusBadge(result.status)}</td>
+                    <td className='px-4 py-4 text-sm text-gray-900'>{result.LevelName}</td>
+                    <td className='px-4 py-4 text-sm text-gray-900'>{result.LecturerName}</td>
+                    <td className='px-4 py-4 text-sm text-gray-900'>{result.StudentCount}</td>
+                    <td className='px-4 py-4'>{getStatusBadge(result.ResultStatus)}</td>
                     <td className='px-4 py-4'>
                       <div className='flex items-center gap-2'>
                         <button
@@ -343,17 +349,17 @@ const ResultsDashboard = () => {
                         >
                           <Eye size={18} />
                         </button>
-                        {result.status === 'Pending' && (
+                        {result.ResultStatus === 'Submitted' && (
                           <>
                             <button
-                              onClick={() => handleApprove(result.id)}
+                              onClick={() => handleApprove(result)}
                               className='p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors'
                               title='Approve'
                             >
                               <UserCheck size={18} />
                             </button>
                             <button
-                              onClick={() => handleReject(result.id)}
+                              onClick={() => handleReject(result)}
                               className='p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors'
                               title='Reject'
                             >

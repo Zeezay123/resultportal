@@ -18,26 +18,26 @@ const AllCourses = () => {
 
   const fetchCourseStats = async () => {
     try {
-      const [statsRes, lecturersRes] = await Promise.all([
+      const [statsRes, lecturersCountRes] = await Promise.all([
         fetch(`/api/hod/courses/stats/${hodId}`, { credentials: 'include' }),
-        fetch(`/api/hod/lecturers/getlecturers`, { credentials: 'include' })
+        fetch(`/api/hod/lecturers/count`, { credentials: 'include' })
       ]);
 
-      if (!statsRes.ok || !lecturersRes.ok) {
+      if (!statsRes.ok || !lecturersCountRes.ok) {
         console.error("Failed to fetch course statistics");
         return;
       }
 
-      const [statsData, lecturersData] = await Promise.all([
+      const [statsData, lecturersCountData] = await Promise.all([
         statsRes.json(),
-        lecturersRes.json()
+        lecturersCountRes.json()
       ]);
 
       setCourseStats({
         total: statsData.stats?.total || 0,
         assigned: statsData.stats?.assigned || 0,
-        unassigned: statsData.stats?.unassigned || 0,
-        lecturers: lecturersData.lecturers?.length || 0
+        unassigned:  statsData.stats?.total - statsData.stats?.assigned || 0,
+        lecturers: lecturersCountData.count || 0
       });
 
     } catch (err) {
